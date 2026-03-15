@@ -789,3 +789,22 @@ Contraintes de structuration :
 - autonomie de versioning, de roadmap et de maintenance
 
 Même si certaines briques de réflexion, de design ou de pilotage issues de NXT Performance peuvent inspirer NXT Finance, le produit final ne doit pas être implémenté comme un sous-module technique de NXT Performance.
+Indépendance fonctionnelle du produit
+
+NXT Finance doit être conçu comme une application pleinement autonome.
+
+Le produit peut être rattaché à un dashboard ou à un écosystème plus large, mais il doit pouvoir être utilisé indépendamment par un utilisateur n’ayant accès qu’à NXT Finance.
+
+Conséquences produit :
+- navigation complète autonome
+- dashboard autonome
+- authentification autonome
+- permissions autonomes
+- expérience cohérente sans dépendance à d’autres modules
+- aucun écran ne doit supposer l’existence d’un autre outil externe pour fonctionner
+
+Conséquences techniques :
+- application standalone first
+- architecture compatible avec une intégration future dans un écosystème plus large
+- aucun couplage fort à NXT Performance
+- possibilité future de fédération d’authentification ou de navigation, sans l’imposer au MVP
