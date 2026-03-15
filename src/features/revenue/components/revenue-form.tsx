@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -24,19 +25,31 @@ import {
   defaultRevenueValues,
   type RevenueFormValues,
 } from './revenue-schema';
+import { CommissionSplitBlock, type SplitParams } from './commission-split-block';
 import type { Revenue } from '@/types/models';
 import { Loader2 } from 'lucide-react';
 
+export interface RevenueFormSubmitData {
+  values: RevenueFormValues;
+  split: SplitParams | null;
+}
+
 interface RevenueFormProps {
-  /** If provided, the form is in edit mode */
   revenue?: Revenue;
-  onSubmit: (values: RevenueFormValues) => void;
+  /** Existing collaborator ID (from commission_splits) */
+  existingCollaboratorId?: string | null;
+  existingNetworkRate?: number;
+  existingCollaboratorRate?: number;
+  onSubmit: (data: RevenueFormSubmitData) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
 export function RevenueForm({
   revenue,
+  existingCollaboratorId,
+  existingNetworkRate,
+  existingCollaboratorRate,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -65,11 +78,25 @@ export function RevenueForm({
       : defaultRevenueValues,
   });
 
+  const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<string | null>(
+    existingCollaboratorId ?? null
+  );
+  const [splitParams, setSplitParams] = useState<SplitParams | null>(null);
+
   const currentType = watch('type');
   const currentStatus = watch('status');
+  const currentAmount = watch('amount');
+
+  const handleSplitChange = useCallback((split: SplitParams | null) => {
+    setSplitParams(split);
+  }, []);
+
+  function handleFormSubmit(values: RevenueFormValues) {
+    onSubmit({ values, split: selectedCollaboratorId ? splitParams : null });
+  }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
       {/* Label */}
       <div className="space-y-1.5">
         <Label htmlFor="label">Libellé *</Label>
@@ -83,7 +110,7 @@ export function RevenueForm({
         )}
       </div>
 
-      {/* Type + Status row */}
+      {/* Type + Status */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Type *</Label>
@@ -124,9 +151,6 @@ export function RevenueForm({
               ))}
             </SelectContent>
           </Select>
-          {errors.status && (
-            <p className="text-xs text-destructive">{errors.status.message}</p>
-          )}
         </div>
       </div>
 
@@ -187,6 +211,16 @@ export function RevenueForm({
           />
         </div>
       </div>
+
+      {/* Commission split */}
+      <CommissionSplitBlock
+        grossAmount={currentAmount || 0}
+        selectedCollaboratorId={selectedCollaboratorId}
+        onCollaboratorChange={setSelectedCollaboratorId}
+        onSplitChange={handleSplitChange}
+        initialNetworkRate={existingNetworkRate}
+        initialCollaboratorRate={existingCollaboratorRate}
+      />
 
       {/* Comment */}
       <div className="space-y-1.5">

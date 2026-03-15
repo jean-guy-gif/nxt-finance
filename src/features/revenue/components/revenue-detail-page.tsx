@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit2, Trash2, FileText } from 'lucide-react';
+import { Edit2, Trash2, FileText, Users, Building2, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDemoGuard, DemoBlockDialog } from '@/components/shared/demo-guard';
 import { BackButton } from '@/components/shared/back-button';
@@ -22,10 +22,14 @@ import { formatCurrency, formatDate, formatDateLong } from '@/lib/formatters';
 import {
   REVENUE_STATUS_LABELS,
   REVENUE_TYPE_LABELS,
+  COLLABORATOR_TYPE_LABELS,
+  PAYOUT_STATUS_LABELS,
+  COMPENSATION_TYPE_LABELS,
+  getCompensationType,
 } from '@/types/enums';
 import { useRevenue, useRevenueReceipts, useUpdateRevenue, useDeleteRevenue } from '../hooks/use-revenues';
-import { RevenueForm } from './revenue-form';
-import type { RevenueFormValues } from './revenue-schema';
+import { useCommissionSplit, useUpsertSplit, useDeleteSplit } from '@/features/collaborators/hooks/use-collaborators';
+import { RevenueForm, type RevenueFormSubmitData } from './revenue-form';
 import Link from 'next/link';
 
 interface Props {
@@ -36,8 +40,11 @@ export function RevenueDetailPage({ id }: Props) {
   const router = useRouter();
   const { data: revenue, isLoading, isError, refetch } = useRevenue(id);
   const { data: receipts } = useRevenueReceipts(id);
+  const { data: split } = useCommissionSplit(id);
   const updateMutation = useUpdateRevenue();
   const deleteMutation = useDeleteRevenue();
+  const upsertSplitMutation = useUpsertSplit();
+  const deleteSplitMutation = useDeleteSplit();
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -48,7 +55,7 @@ export function RevenueDetailPage({ id }: Props) {
     return <ErrorState message="Impossible de charger cette recette." onRetry={refetch} />;
   }
 
-  async function handleUpdate(values: RevenueFormValues) {
+  async function handleUpdate({ values, split: splitData }: RevenueFormSubmitData) {
     await updateMutation.mutateAsync({
       id,
       label: values.label,
@@ -62,6 +69,20 @@ export function RevenueDetailPage({ id }: Props) {
       status: values.status,
       comment: values.comment || undefined,
     });
+    // Update or delete commission split
+    if (splitData) {
+      await upsertSplitMutation.mutateAsync({
+        revenueId: id,
+        collaboratorId: splitData.collaboratorId,
+        collaboratorType: splitData.collaboratorType,
+        grossAmount: values.amount,
+        networkRate: splitData.networkRate,
+        collaboratorRate: splitData.collaboratorRate,
+      });
+    } else if (split) {
+      // Collaborator was removed → delete the split
+      await deleteSplitMutation.mutateAsync(id);
+    }
     setShowEdit(false);
   }
 
@@ -147,6 +168,57 @@ export function RevenueDetailPage({ id }: Props) {
           </div>
         </SectionCard>
 
+        {/* Commission split */}
+        {split && split.collaborator && (
+          <SectionCard title="Répartition de la commission">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{split.collaborator.full_name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {COLLABORATOR_TYPE_LABELS[split.collaborator.type]}
+                </span>
+                <StatusBadge
+                  status={split.payout_status === 'paid' ? 'validated' : split.payout_status === 'cancelled' ? 'draft' : 'to_verify'}
+                  label={PAYOUT_STATUS_LABELS[split.payout_status]}
+                />
+              </div>
+
+              <div className="rounded-md border p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Commission brute</span>
+                  <span className="font-medium">{formatCurrency(split.gross_amount)}</span>
+                </div>
+                {split.network_amount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><Landmark className="h-3 w-3" />Réseau ({split.network_rate}%)</span>
+                    <span>− {formatCurrency(split.network_amount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5 text-muted-foreground"><Building2 className="h-3 w-3" />Part agence ({split.agency_rate}%)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(split.agency_amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    {split.collaborator.type === 'salarie' ? 'Coût salarial estimé' : 'Part collaborateur'} ({split.collaborator_rate}%)
+                  </span>
+                  <span className={`font-semibold ${split.collaborator.type === 'salarie' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {formatCurrency(split.collaborator_amount)}
+                  </span>
+                </div>
+              </div>
+
+              {split.collaborator.type === 'salarie' && (
+                <p className="text-[10px] text-muted-foreground/70">
+                  Indicateur de pilotage — ne constitue pas un calcul de paie ou de charges sociales.
+                </p>
+              )}
+            </div>
+          </SectionCard>
+        )}
+
         {/* Linked receipts — ready for future attachment */}
         <SectionCard title="Pièces jointes">
           {receipts && receipts.length > 0 ? (
@@ -176,9 +248,12 @@ export function RevenueDetailPage({ id }: Props) {
           </DialogHeader>
           <RevenueForm
             revenue={revenue}
+            existingCollaboratorId={split?.collaborator_id ?? null}
+            existingNetworkRate={split?.network_rate}
+            existingCollaboratorRate={split?.collaborator_rate}
             onSubmit={handleUpdate}
             onCancel={() => setShowEdit(false)}
-            isSubmitting={updateMutation.isPending}
+            isSubmitting={updateMutation.isPending || upsertSplitMutation.isPending}
           />
         </DialogContent>
       </Dialog>

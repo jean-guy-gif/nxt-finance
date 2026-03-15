@@ -21,10 +21,10 @@ import { LoadingState } from '@/components/shared/loading-state';
 import { ErrorState } from '@/components/shared/error-state';
 import { EmptyState } from '@/components/shared/empty-state';
 import { useRevenues, useCreateRevenue } from '../hooks/use-revenues';
+import { useUpsertSplit } from '@/features/collaborators/hooks/use-collaborators';
 import { revenueColumns } from './revenue-columns';
 import { RevenueMobileCard } from './revenue-mobile-card';
-import { RevenueForm, } from './revenue-form';
-import type { RevenueFormValues } from './revenue-schema';
+import { RevenueForm, type RevenueFormSubmitData } from './revenue-form';
 import type { Revenue } from '@/types/models';
 import type { RevenueStatus, RevenueType } from '@/types/enums';
 import { REVENUE_TYPES, REVENUE_TYPE_LABELS } from '@/types/enums';
@@ -52,6 +52,7 @@ export function RevenueListPage() {
 
   const { data: revenues, isLoading, isError, refetch } = useRevenues(filters);
   const createMutation = useCreateRevenue();
+  const upsertSplitMutation = useUpsertSplit();
   const { toast } = useToast();
 
   const activeFilterCount =
@@ -61,9 +62,9 @@ export function RevenueListPage() {
     router.push(`/recettes/${revenue.id}`);
   }
 
-  async function handleCreate(values: RevenueFormValues) {
+  async function handleCreate({ values, split }: RevenueFormSubmitData) {
     try {
-      await createMutation.mutateAsync({
+      const revenue = await createMutation.mutateAsync({
         label: values.label,
         type: values.type,
         source: values.source || undefined,
@@ -75,6 +76,17 @@ export function RevenueListPage() {
         status: values.status,
         comment: values.comment || undefined,
       });
+      // Create commission split if a collaborator is selected
+      if (split) {
+        await upsertSplitMutation.mutateAsync({
+          revenueId: revenue.id,
+          collaboratorId: split.collaboratorId,
+          collaboratorType: split.collaboratorType,
+          grossAmount: values.amount,
+          networkRate: split.networkRate,
+          collaboratorRate: split.collaboratorRate,
+        });
+      }
       toast('Recette créée avec succès', 'success');
       setShowForm(false);
     } catch {

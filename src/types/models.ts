@@ -21,6 +21,10 @@ import type {
   ExportStatus,
   ActivityAction,
   ActivityEntityType,
+  CollaboratorType,
+  CollaboratorStatus,
+  PayoutStatus,
+  CompensationType,
 } from './enums';
 
 // --- Base ---
@@ -253,4 +257,43 @@ export interface ActivityLog {
   created_at: string;
   // Joined
   user?: UserProfile;
+}
+
+// --- Collaborateur ---
+
+export interface Collaborator {
+  id: string;
+  agency_id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  status: CollaboratorStatus;
+  type: CollaboratorType;
+  default_split_rate: number;
+  /** Estimated employer cost rate for salariés (charges patronales). Informational only. */
+  employer_cost_rate: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- Commission split ---
+
+export interface CommissionSplit {
+  id: string;
+  revenue_id: string;
+  collaborator_id: string;
+  gross_amount: number;
+  network_rate: number;
+  network_amount: number;
+  agency_rate: number;
+  agency_amount: number;
+  collaborator_rate: number;
+  collaborator_amount: number;
+  /** Financial nature: reversement (independent), masse_salariale (employee), avance_commission (VRP, future) */
+  compensation_type: CompensationType;
+  payout_status: PayoutStatus;
+  paid_at: string | null;
+  created_at: string;
+  // Joined
+  collaborator?: Collaborator;
 }

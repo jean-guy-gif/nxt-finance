@@ -281,9 +281,77 @@ export const ACTIVITY_ENTITY_TYPES = [
   'period',
   'export',
   'comment',
+  'collaborator',
+  'commission_split',
 ] as const;
 
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number];
+
+// --- Collaborateurs ---
+
+export const COLLABORATOR_TYPES = [
+  'salarie',
+  'agent_commercial',
+  'independant',
+] as const;
+
+export type CollaboratorType = (typeof COLLABORATOR_TYPES)[number];
+
+export const COLLABORATOR_TYPE_LABELS: Record<CollaboratorType, string> = {
+  salarie: 'Salarié',
+  agent_commercial: 'Agent commercial',
+  independant: 'Indépendant',
+};
+
+export const COLLABORATOR_STATUSES = ['active', 'inactive'] as const;
+
+export type CollaboratorStatus = (typeof COLLABORATOR_STATUSES)[number];
+
+export const COLLABORATOR_STATUS_LABELS: Record<CollaboratorStatus, string> = {
+  active: 'Actif',
+  inactive: 'Inactif',
+};
+
+// --- Commissionnement ---
+
+export const PAYOUT_STATUSES = ['pending', 'paid', 'cancelled'] as const;
+
+export type PayoutStatus = (typeof PAYOUT_STATUSES)[number];
+
+export const PAYOUT_STATUS_LABELS: Record<PayoutStatus, string> = {
+  pending: 'À reverser',
+  paid: 'Reversé',
+  cancelled: 'Annulé',
+};
+
+export const COMPENSATION_TYPES = [
+  'reversement',
+  'masse_salariale',
+  'avance_commission',
+] as const;
+
+export type CompensationType = (typeof COMPENSATION_TYPES)[number];
+
+export const COMPENSATION_TYPE_LABELS: Record<CompensationType, string> = {
+  reversement: 'Reversement collaborateur',
+  masse_salariale: 'Masse salariale estimée',
+  avance_commission: 'Avance sur commission',
+};
+
+/**
+ * Maps collaborator type → compensation type.
+ * This is the SINGLE source of truth for the mapping.
+ * avance_commission is never produced until VRP type is active.
+ */
+export function getCompensationType(collaboratorType: CollaboratorType): CompensationType {
+  switch (collaboratorType) {
+    case 'salarie':
+      return 'masse_salariale';
+    case 'agent_commercial':
+    case 'independant':
+      return 'reversement';
+  }
+}
 
 // --- Temporalité ---
 

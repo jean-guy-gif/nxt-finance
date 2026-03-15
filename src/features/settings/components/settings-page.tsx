@@ -7,8 +7,10 @@ import { useState } from 'react';
 import { AgencySection } from './agency-section';
 import { MembersSection } from './members-section';
 import { ThresholdsSection } from './thresholds-section';
+import { CollaboratorsSection } from '@/features/collaborators/components/collaborators-section';
+import { NetworkSection } from '@/features/collaborators/components/network-section';
 
-type SettingsTab = 'agency' | 'members' | 'thresholds';
+type SettingsTab = 'agency' | 'members' | 'collaborators' | 'thresholds';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('agency');
@@ -36,12 +38,19 @@ export function SettingsPage() {
         <TabsList>
           <TabsTrigger value="agency" className="text-xs">Agence</TabsTrigger>
           <TabsTrigger value="members" className="text-xs">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="collaborators" className="text-xs">Collaborateurs</TabsTrigger>
           <TabsTrigger value="thresholds" className="text-xs">Seuils et alertes</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {activeTab === 'agency' && <AgencySection />}
       {activeTab === 'members' && <MembersSection />}
+      {activeTab === 'collaborators' && (
+        <div className="space-y-6">
+          <NetworkSection />
+          <CollaboratorsSection />
+        </div>
+      )}
       {activeTab === 'thresholds' && <ThresholdsSection />}
     </div>
   );
