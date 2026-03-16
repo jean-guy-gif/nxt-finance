@@ -18,7 +18,9 @@ export interface UpdateCollaboratorInput {
   status?: CollaboratorStatus;
   type?: CollaboratorType;
   default_split_rate?: number;
-  employer_cost_rate?: number;
+  salary_net_monthly?: number | null;
+  salary_gross_monthly?: number | null;
+  employer_total_cost_monthly?: number | null;
 }
 
 export async function fetchCollaborators(

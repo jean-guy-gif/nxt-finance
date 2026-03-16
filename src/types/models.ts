@@ -270,8 +270,12 @@ export interface Collaborator {
   status: CollaboratorStatus;
   type: CollaboratorType;
   default_split_rate: number;
-  /** Estimated employer cost rate for salariés (charges patronales). Informational only. */
-  employer_cost_rate: number | null;
+  /** Monthly net salary — salariés only, for payroll piloting */
+  salary_net_monthly: number | null;
+  /** Monthly gross salary — salariés only */
+  salary_gross_monthly: number | null;
+  /** Monthly total employer cost (gross + charges) — salariés only */
+  employer_total_cost_monthly: number | null;
   created_at: string;
   updated_at: string;
 }

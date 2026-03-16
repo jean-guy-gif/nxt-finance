@@ -53,7 +53,9 @@ export function CollaboratorForm({
           email: collaborator.email ?? '',
           phone: collaborator.phone ?? '',
           default_split_rate: collaborator.default_split_rate,
-          employer_cost_rate: collaborator.employer_cost_rate ?? undefined,
+          salary_net_monthly: collaborator.salary_net_monthly ?? undefined,
+          salary_gross_monthly: collaborator.salary_gross_monthly ?? undefined,
+          employer_total_cost_monthly: collaborator.employer_total_cost_monthly ?? undefined,
           status: collaborator.status,
         }
       : defaultCollaboratorValues,
@@ -120,25 +122,38 @@ export function CollaboratorForm({
         </div>
       </div>
 
-      {/* Employer cost rate — only for salariés */}
+      {/* Salary fields — only for salariés */}
       {isSalarie && (
-        <div className="space-y-1.5">
-          <Label>Taux estimatif de coût employeur</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              min={0}
-              max={200}
-              step={0.01}
-              value={watch('employer_cost_rate') ?? ''}
-              onChange={(e) => setValue('employer_cost_rate', e.target.value ? parseFloat(e.target.value) : undefined)}
-              className="pr-8"
-              placeholder="Ex : 45"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+        <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Rémunération mensuelle</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>Salaire net</Label>
+              <CurrencyInput
+                value={watch('salary_net_monthly') ?? ''}
+                onChange={(v) => setValue('salary_net_monthly', v ? parseFloat(v) : undefined)}
+                placeholder="2 000"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Salaire brut</Label>
+              <CurrencyInput
+                value={watch('salary_gross_monthly') ?? ''}
+                onChange={(v) => setValue('salary_gross_monthly', v ? parseFloat(v) : undefined)}
+                placeholder="2 600"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Coût total employeur</Label>
+              <CurrencyInput
+                value={watch('employer_total_cost_monthly') ?? ''}
+                onChange={(v) => setValue('employer_total_cost_monthly', v ? parseFloat(v) : undefined)}
+                placeholder="3 400"
+              />
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Indicateur de pilotage estimatif — ne constitue pas un calcul social certifié.
+            Indicateurs de pilotage — ne constituent pas des données de paie certifiées.
           </p>
         </div>
       )}

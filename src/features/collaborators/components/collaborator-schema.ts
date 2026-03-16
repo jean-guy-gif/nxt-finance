@@ -15,12 +15,10 @@ export const collaboratorFormSchema = z.object({
     .number({ message: 'Le taux est requis' })
     .min(0, 'Le taux doit être entre 0 et 100')
     .max(100, 'Le taux doit être entre 0 et 100'),
-  employer_cost_rate: z
-    .number()
-    .min(0)
-    .max(200)
-    .optional()
-    .or(z.nan()),
+  // Salary fields — salariés only
+  salary_net_monthly: z.number().min(0).optional().or(z.nan()),
+  salary_gross_monthly: z.number().min(0).optional().or(z.nan()),
+  employer_total_cost_monthly: z.number().min(0).optional().or(z.nan()),
   status: z.enum([...COLLABORATOR_STATUSES]).optional(),
 });
 
@@ -32,6 +30,8 @@ export const defaultCollaboratorValues: CollaboratorFormValues = {
   email: '',
   phone: '',
   default_split_rate: 50,
-  employer_cost_rate: undefined,
+  salary_net_monthly: undefined,
+  salary_gross_monthly: undefined,
+  employer_total_cost_monthly: undefined,
   status: 'active',
 };

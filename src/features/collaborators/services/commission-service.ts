@@ -156,38 +156,54 @@ export async function updatePayoutStatus(
 }
 
 /**
- * Dashboard KPI data — split by compensation type.
+ * Dashboard KPI data.
  */
 export interface PayoutSummary {
-  /** Amount pending payout to independents/agents (compensation_type = reversement) */
+  /** Amount pending payout to independents/agents (compensation_type = reversement, payout_status = pending) */
   pendingReversement: number;
-  /** Estimated payroll cost for employees (compensation_type = masse_salariale) */
-  estimatedPayroll: number;
+  /** Monthly payroll cost = SUM(employer_total_cost_monthly) of active salariés */
+  monthlyPayroll: number;
+  /** Number of active salariés */
+  salarieCount: number;
 }
 
 /**
- * Fetch payout summary for an agency, split by compensation type.
+ * Fetch payout summary for an agency.
+ * - pendingReversement: from commission_splits (only independents)
+ * - monthlyPayroll: from collaborators (fixed monthly cost, not commission-based)
  */
 export async function fetchPayoutSummary(
   supabase: SupabaseClient,
   agencyId: string
 ): Promise<PayoutSummary> {
-  const { data, error } = await supabase
+  // Pending reversements from splits (independents/agents only)
+  const { data: splits } = await supabase
     .from('commission_splits')
     .select('collaborator_amount, compensation_type, payout_status, revenue:revenues!inner(agency_id)')
+    .eq('compensation_type', 'reversement')
+    .eq('payout_status', 'pending')
     .eq('revenue.agency_id', agencyId);
 
-  if (error) return { pendingReversement: 0, estimatedPayroll: 0 };
+  const pendingReversement = (splits ?? []).reduce(
+    (sum, r) => sum + Number(r.collaborator_amount), 0
+  );
 
-  const rows = data ?? [];
+  // Monthly payroll from active salariés
+  const { data: salaries } = await supabase
+    .from('collaborators')
+    .select('employer_total_cost_monthly')
+    .eq('agency_id', agencyId)
+    .eq('type', 'salarie')
+    .eq('status', 'active')
+    .not('employer_total_cost_monthly', 'is', null);
 
-  const pendingReversement = rows
-    .filter((r) => r.compensation_type === 'reversement' && r.payout_status === 'pending')
-    .reduce((sum, r) => sum + Number(r.collaborator_amount), 0);
+  const monthlyPayroll = (salaries ?? []).reduce(
+    (sum, c) => sum + Number(c.employer_total_cost_monthly), 0
+  );
 
-  const estimatedPayroll = rows
-    .filter((r) => r.compensation_type === 'masse_salariale')
-    .reduce((sum, r) => sum + Number(r.collaborator_amount), 0);
-
-  return { pendingReversement, estimatedPayroll };
+  return {
+    pendingReversement,
+    monthlyPayroll,
+    salarieCount: (salaries ?? []).length,
+  };
 }

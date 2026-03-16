@@ -70,9 +70,9 @@ export function CollaboratorsSection() {
         email: values.email || undefined,
         phone: values.phone || undefined,
         default_split_rate: values.default_split_rate,
-        employer_cost_rate: values.type === 'salarie' && values.employer_cost_rate && !isNaN(values.employer_cost_rate)
-          ? values.employer_cost_rate
-          : undefined,
+        salary_net_monthly: values.type === 'salarie' && values.salary_net_monthly && !isNaN(values.salary_net_monthly) ? values.salary_net_monthly : null,
+        salary_gross_monthly: values.type === 'salarie' && values.salary_gross_monthly && !isNaN(values.salary_gross_monthly) ? values.salary_gross_monthly : null,
+        employer_total_cost_monthly: values.type === 'salarie' && values.employer_total_cost_monthly && !isNaN(values.employer_total_cost_monthly) ? values.employer_total_cost_monthly : null,
         status: values.status,
       });
       toast('Collaborateur modifié', 'success');
@@ -144,7 +144,7 @@ export function CollaboratorsSection() {
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Taux : {collab.default_split_rate}%
-                          {collab.employer_cost_rate != null && ` — Coût employeur estimé : ${collab.employer_cost_rate}%`}
+                          {collab.employer_total_cost_monthly != null && ` — Coût employeur : ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(collab.employer_total_cost_monthly)}/mois`}
                           {collab.email && ` — ${collab.email}`}
                         </p>
                       </div>

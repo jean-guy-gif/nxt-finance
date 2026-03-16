@@ -12,6 +12,8 @@ import {
   ArrowRight,
   Upload,
   Calculator,
+  Users,
+  Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +41,7 @@ import {
   useTreasury,
 } from '../hooks/use-dashboard';
 import { useAlertEngine, useAlerts, useDismissAlert } from '@/features/alerts/hooks/use-alerts';
+import { usePayoutSummary } from '@/features/collaborators/hooks/use-collaborators';
 
 const QUICK_ACTIONS = [
   { label: 'Ajouter une recette', href: '/recettes?action=new', icon: TrendingUp },
@@ -54,6 +57,7 @@ export function DashboardPage() {
   const admin = useDashboardAdminStats();
   const vat = useDashboardVat();
   const treasury = useTreasury();
+  const payout = usePayoutSummary();
 
   // Run alert engine (computes + syncs to DB), then fetch for display
   useAlertEngine();
@@ -132,6 +136,32 @@ export function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Commission KPIs — only shown when there's data */}
+      {payout.data && (payout.data.pendingReversement > 0 || payout.data.monthlyPayroll > 0) && (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          {payout.data.pendingReversement > 0 && (
+            <KpiCard
+              title="À reverser aux collaborateurs"
+              value={formatCurrency(payout.data.pendingReversement)}
+              subtitle="Parts indépendants / agents en attente de reversement"
+              icon={Users}
+              variant="warning"
+              href="/recettes"
+            />
+          )}
+          {payout.data.monthlyPayroll > 0 && (
+            <KpiCard
+              title="Masse salariale mensuelle"
+              value={formatCurrency(payout.data.monthlyPayroll)}
+              subtitle={`${payout.data.salarieCount} salarié${payout.data.salarieCount > 1 ? 's' : ''} — indicateur de pilotage`}
+              icon={Building2}
+              variant="default"
+              href="/parametres"
+            />
+          )}
+        </div>
+      )}
 
       {/* Alerts */}
       <AlertsSection
@@ -218,10 +248,7 @@ export function DashboardPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Total encaissements cumulés</span>
                 <span className="font-medium text-emerald-600">
-                  {kpis.data ? formatCurrency(
-                    // Sum of all collected revenues (approximation from period data)
-                    kpis.data.collections
-                  ) : '—'}
+                  {kpis.data ? formatCurrency(kpis.data.collections) : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -236,6 +263,41 @@ export function DashboardPage() {
                   {treasury.data !== undefined ? formatCurrency(treasury.data) : '—'}
                 </span>
               </div>
+
+              {/* Collaborator impact */}
+              {payout.data && payout.data.pendingReversement > 0 && (
+                <div className="border-t pt-2 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Users className="h-3 w-3" />
+                      dont parts collaborateurs à reverser
+                    </span>
+                    <span className="font-medium text-amber-600">
+                      {formatCurrency(payout.data.pendingReversement)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/70">
+                    Montant dû aux indépendants et agents commerciaux, non encore reversé.
+                  </p>
+                </div>
+              )}
+
+              {payout.data && payout.data.monthlyPayroll > 0 && (
+                <div className="border-t pt-2 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3" />
+                      Masse salariale mensuelle
+                    </span>
+                    <span className="font-medium text-muted-foreground">
+                      {formatCurrency(payout.data.monthlyPayroll)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/70">
+                    Coût employeur total des {payout.data.salarieCount} salarié{payout.data.salarieCount > 1 ? 's' : ''} actif{payout.data.salarieCount > 1 ? 's' : ''} — indicateur de pilotage.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
               <p className="text-xs text-amber-800">
