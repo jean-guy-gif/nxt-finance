@@ -8,6 +8,7 @@ import {
   Receipt,
   Calendar,
   Users,
+  Banknote,
   Settings,
   X,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: 'Recettes', href: '/recettes', icon: TrendingUp },
   { label: 'Dépenses', href: '/depenses', icon: Receipt },
   { label: 'Périodes', href: '/periodes', icon: Calendar },
+  { label: 'Reversements', href: '/reversements', icon: Banknote },
   { label: 'Comptable', href: '/comptable', icon: Users },
   { label: 'Paramètres', href: '/parametres', icon: Settings },
 ] as const;

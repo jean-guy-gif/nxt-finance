@@ -8,6 +8,7 @@ import {
   Receipt,
   Calendar,
   Users,
+  Banknote,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { label: 'Recettes', href: '/recettes', icon: TrendingUp },
   { label: 'Dépenses', href: '/depenses', icon: Receipt },
   { label: 'Périodes', href: '/periodes', icon: Calendar },
+  { label: 'Reversements', href: '/reversements', icon: Banknote },
   { label: 'Comptable', href: '/comptable', icon: Users },
 ] as const;
 
