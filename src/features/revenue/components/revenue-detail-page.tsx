@@ -192,10 +192,15 @@ export function RevenueDetailPage({ id }: Props) {
                 <span className="text-xs text-muted-foreground">
                   {COLLABORATOR_TYPE_LABELS[split.collaborator.type]}
                 </span>
-                <StatusBadge
-                  status={split.payout_status === 'paid' ? 'validated' : split.payout_status === 'cancelled' ? 'draft' : 'to_verify'}
-                  label={PAYOUT_STATUS_LABELS[split.payout_status]}
-                />
+                {split.collaborator.type !== 'salarie' && (
+                  <StatusBadge
+                    status={split.payout_status === 'paid' ? 'validated' : split.payout_status === 'cancelled' ? 'draft' : 'to_verify'}
+                    label={PAYOUT_STATUS_LABELS[split.payout_status]}
+                  />
+                )}
+                {split.collaborator.type === 'salarie' && (
+                  <StatusBadge status="info" label="Performance" />
+                )}
               </div>
 
               <div className="rounded-md border p-3 space-y-1.5 text-sm">

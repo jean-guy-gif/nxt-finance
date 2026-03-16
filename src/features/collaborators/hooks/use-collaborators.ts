@@ -166,7 +166,7 @@ export function useUpsertSplit() {
       });
       queryClient.invalidateQueries({ queryKey: ['commission-split', variables.revenueId] });
       queryClient.invalidateQueries({ queryKey: ['revenue', variables.revenueId] });
-      queryClient.invalidateQueries({ queryKey: ['pending-payout'] });
+      queryClient.invalidateQueries({ queryKey: ['payout-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
@@ -190,7 +190,7 @@ export function useDeleteSplit() {
       });
       queryClient.invalidateQueries({ queryKey: ['commission-split', revenueId] });
       queryClient.invalidateQueries({ queryKey: ['revenue', revenueId] });
-      queryClient.invalidateQueries({ queryKey: ['pending-payout'] });
+      queryClient.invalidateQueries({ queryKey: ['payout-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
@@ -215,7 +215,7 @@ export function useUpdatePayoutStatus() {
         metadata: { collaborator_amount: data.collaborator_amount },
       });
       queryClient.invalidateQueries({ queryKey: ['commission-split'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-payout'] });
+      queryClient.invalidateQueries({ queryKey: ['payout-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
