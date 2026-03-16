@@ -73,25 +73,30 @@ export function CommissionSplitBlock({
 
   const [networkRate, setNetworkRate] = useState(initialNetworkRate ?? defaultNetworkRate);
   const [collaboratorRate, setCollaboratorRate] = useState(initialCollaboratorRate ?? 50);
+  const [prevCollaboratorId, setPrevCollaboratorId] = useState(selectedCollaboratorId);
 
   const selectedCollaborator = useMemo(
     () => collaborators?.find((c) => c.id === selectedCollaboratorId) ?? null,
     [collaborators, selectedCollaboratorId]
   );
 
-  // Update collaborator rate when selection changes
+  // Update rates when collaborator selection changes
   useEffect(() => {
-    if (selectedCollaborator) {
-      if (initialCollaboratorRate === undefined) {
-        setCollaboratorRate(selectedCollaborator.default_split_rate);
-      }
+    if (!selectedCollaborator) return;
+
+    const isNewSelection = selectedCollaboratorId !== prevCollaboratorId;
+    setPrevCollaboratorId(selectedCollaboratorId);
+
+    if (isNewSelection) {
+      // Always load the new collaborator's default rate when switching
+      setCollaboratorRate(selectedCollaborator.default_split_rate);
       if (!hasNetwork) {
         setNetworkRate(0);
-      } else if (initialNetworkRate === undefined) {
+      } else {
         setNetworkRate(defaultNetworkRate);
       }
     }
-  }, [selectedCollaborator, hasNetwork, defaultNetworkRate, initialCollaboratorRate, initialNetworkRate]);
+  }, [selectedCollaborator, selectedCollaboratorId, prevCollaboratorId, hasNetwork, defaultNetworkRate]);
 
   // Calculate and notify parent
   const calc = useMemo(() => {
