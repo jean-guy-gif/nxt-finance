@@ -28,8 +28,10 @@ import {
   getCompensationType,
 } from '@/types/enums';
 import { useRevenue, useRevenueReceipts, useUpdateRevenue, useDeleteRevenue } from '../hooks/use-revenues';
-import { useCommissionSplit, useUpsertSplit, useDeleteSplit } from '@/features/collaborators/hooks/use-collaborators';
+import { useCommissionSplit, useUpsertSplit, useDeleteSplit, useUpdatePayoutStatus } from '@/features/collaborators/hooks/use-collaborators';
+import { useToast } from '@/components/shared/toast';
 import { RevenueForm, type RevenueFormSubmitData } from './revenue-form';
+import type { PayoutStatus } from '@/types/enums';
 import Link from 'next/link';
 
 interface Props {
@@ -45,10 +47,22 @@ export function RevenueDetailPage({ id }: Props) {
   const deleteMutation = useDeleteRevenue();
   const upsertSplitMutation = useUpsertSplit();
   const deleteSplitMutation = useDeleteSplit();
+  const payoutMutation = useUpdatePayoutStatus();
+  const { toast } = useToast();
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const { guard, showBlock, setShowBlock } = useDemoGuard();
+
+  async function handlePayoutChange(splitId: string, status: PayoutStatus) {
+    try {
+      await payoutMutation.mutateAsync({ splitId, status });
+      const labels = { pending: 'remis en attente', paid: 'marqué comme reversé', cancelled: 'annulé' };
+      toast(`Reversement ${labels[status]}`, 'success');
+    } catch {
+      toast('Impossible de modifier le statut du reversement.', 'error');
+    }
+  }
 
   if (isLoading) return <LoadingState message="Chargement de la recette..." fullPage />;
   if (isError || !revenue) {
@@ -209,6 +223,69 @@ export function RevenueDetailPage({ id }: Props) {
                   </span>
                 </div>
               </div>
+
+              {/* Payout actions — only for reversement (independents/agents) */}
+              {split.collaborator.type !== 'salarie' && (
+                <div className="flex items-center justify-between border-t pt-3">
+                  <div className="text-xs text-muted-foreground">
+                    {split.payout_status === 'paid' && split.paid_at && (
+                      <span>Reversé le {formatDateLong(split.paid_at)}</span>
+                    )}
+                    {split.payout_status === 'cancelled' && (
+                      <span>Reversement annulé</span>
+                    )}
+                    {split.payout_status === 'pending' && (
+                      <span>En attente de reversement</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {split.payout_status === 'pending' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handlePayoutChange(split.id, 'paid')}
+                        disabled={payoutMutation.isPending}
+                      >
+                        Marquer reversé
+                      </Button>
+                    )}
+                    {split.payout_status === 'pending' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handlePayoutChange(split.id, 'cancelled')}
+                        disabled={payoutMutation.isPending}
+                      >
+                        Annuler
+                      </Button>
+                    )}
+                    {split.payout_status === 'paid' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handlePayoutChange(split.id, 'pending')}
+                        disabled={payoutMutation.isPending}
+                      >
+                        Remettre en attente
+                      </Button>
+                    )}
+                    {split.payout_status === 'cancelled' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handlePayoutChange(split.id, 'pending')}
+                        disabled={payoutMutation.isPending}
+                      >
+                        Réactiver
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {split.collaborator.type === 'salarie' && (
                 <p className="text-[10px] text-muted-foreground/70">
