@@ -11,10 +11,13 @@ export const collaboratorFormSchema = z.object({
   }),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   phone: z.string().max(20).optional().or(z.literal('')),
+  // Split rate — required for independants/agents, ignored for salariés
   default_split_rate: z
-    .number({ message: 'Le taux est requis' })
+    .number()
     .min(0, 'Le taux doit être entre 0 et 100')
-    .max(100, 'Le taux doit être entre 0 et 100'),
+    .max(100, 'Le taux doit être entre 0 et 100')
+    .optional()
+    .or(z.literal(0)),
   // Salary fields — salariés only
   salary_net_monthly: z.number().min(0).optional().or(z.nan()),
   salary_gross_monthly: z.number().min(0).optional().or(z.nan()),

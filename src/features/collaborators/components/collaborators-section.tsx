@@ -51,7 +51,7 @@ export function CollaboratorsSection() {
         type: values.type!,
         email: values.email || undefined,
         phone: values.phone || undefined,
-        default_split_rate: values.default_split_rate,
+        default_split_rate: values.type === 'salarie' ? 0 : (values.default_split_rate ?? 50),
       });
       toast('Collaborateur ajouté', 'success');
       setShowForm(false);
@@ -69,7 +69,7 @@ export function CollaboratorsSection() {
         type: values.type,
         email: values.email || undefined,
         phone: values.phone || undefined,
-        default_split_rate: values.default_split_rate,
+        default_split_rate: values.type === 'salarie' ? 0 : (values.default_split_rate ?? 50),
         salary_net_monthly: values.type === 'salarie' && values.salary_net_monthly && !isNaN(values.salary_net_monthly) ? values.salary_net_monthly : null,
         salary_gross_monthly: values.type === 'salarie' && values.salary_gross_monthly && !isNaN(values.salary_gross_monthly) ? values.salary_gross_monthly : null,
         employer_total_cost_monthly: values.type === 'salarie' && values.employer_total_cost_monthly && !isNaN(values.employer_total_cost_monthly) ? values.employer_total_cost_monthly : null,
@@ -143,8 +143,9 @@ export function CollaboratorsSection() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Taux : {collab.default_split_rate}%
-                          {collab.employer_total_cost_monthly != null && ` — Coût employeur : ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(collab.employer_total_cost_monthly)}/mois`}
+                          {collab.type !== 'salarie' && `Taux : ${collab.default_split_rate}%`}
+                          {collab.type === 'salarie' && collab.employer_total_cost_monthly != null && `Coût employeur : ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(collab.employer_total_cost_monthly)}/mois`}
+                          {collab.type === 'salarie' && collab.employer_total_cost_monthly == null && 'Rémunération non renseignée'}
                           {collab.email && ` — ${collab.email}`}
                         </p>
                       </div>

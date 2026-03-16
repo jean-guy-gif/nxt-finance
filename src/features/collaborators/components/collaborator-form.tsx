@@ -103,23 +103,26 @@ export function CollaboratorForm({
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Taux collaborateur par défaut *</Label>
-          <div className="relative">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={0.01}
-              {...register('default_split_rate', { valueAsNumber: true })}
-              className="pr-8"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+        {/* Split rate — only for non-salariés */}
+        {!isSalarie && (
+          <div className="space-y-1.5">
+            <Label>Taux collaborateur par défaut *</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                {...register('default_split_rate', { valueAsNumber: true })}
+                className="pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">%</span>
+            </div>
+            {errors.default_split_rate && (
+              <p className="text-xs text-destructive">{errors.default_split_rate.message}</p>
+            )}
           </div>
-          {errors.default_split_rate && (
-            <p className="text-xs text-destructive">{errors.default_split_rate.message}</p>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Salary fields — only for salariés */}
