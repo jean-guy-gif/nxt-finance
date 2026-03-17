@@ -28,6 +28,9 @@ DECLARE
   v_base_amount DECIMAL;
   v_seasonality DECIMAL;
   v_random_factor DECIMAL;
+  v_network DECIMAL;
+  v_collab_amt DECIMAL;
+  v_agency_amt DECIMAL;
 BEGIN
 
   -- Récupérer la première agence et le premier user
@@ -120,9 +123,12 @@ BEGIN
         v_period_id, 'validated', v_user_id)
       RETURNING id INTO v_revenue_id;
 
-      -- Commission split pour Jean Martin (VRP)
+      -- Commission split pour Jean Martin (VRP) — network=5%, collab=45%, agency=remainder
+      v_network := ROUND(v_base_amount * 5 / 100, 2);
+      v_collab_amt := ROUND((v_base_amount - v_network) * 45 / 100, 2);
+      v_agency_amt := v_base_amount - v_network - v_collab_amt;
       INSERT INTO commission_splits (revenue_id, collaborator_id, gross_amount, network_rate, network_amount, agency_rate, agency_amount, collaborator_rate, collaborator_amount, compensation_type, payout_status, paid_at)
-      VALUES (v_revenue_id, v_collab_2, v_base_amount, 5, v_base_amount * 0.05, 50, v_base_amount * 0.475, 45, v_base_amount * 0.4275, 'reversement', 'paid', now());
+      VALUES (v_revenue_id, v_collab_2, v_base_amount, 5, v_network, ROUND(v_agency_amt / (v_base_amount - v_network) * 100, 2), v_agency_amt, 45, v_collab_amt, 'reversement', 'paid', now());
 
       -- 2ème transaction
       v_random_factor := 0.85 + random() * 0.3;
@@ -135,9 +141,12 @@ BEGIN
         v_period_id, 'collected', v_user_id)
       RETURNING id INTO v_revenue_id;
 
-      -- Commission split pour Sophie Durand (indépendante)
+      -- Commission split pour Sophie Durand (indépendante) — network=5%, collab=50%, agency=remainder
+      v_network := ROUND(v_base_amount * 5 / 100, 2);
+      v_collab_amt := ROUND((v_base_amount - v_network) * 50 / 100, 2);
+      v_agency_amt := v_base_amount - v_network - v_collab_amt;
       INSERT INTO commission_splits (revenue_id, collaborator_id, gross_amount, network_rate, network_amount, agency_rate, agency_amount, collaborator_rate, collaborator_amount, compensation_type, payout_status, paid_at)
-      VALUES (v_revenue_id, v_collab_3, v_base_amount, 5, v_base_amount * 0.05, 45, v_base_amount * 0.4275, 50, v_base_amount * 0.475, 'reversement', 'paid', now());
+      VALUES (v_revenue_id, v_collab_3, v_base_amount, 5, v_network, ROUND(v_agency_amt / (v_base_amount - v_network) * 100, 2), v_agency_amt, 50, v_collab_amt, 'reversement', 'paid', now());
 
       -- ---- HONORAIRES GESTION (récurrent) ----
       v_base_amount := 3500 * (0.95 + random() * 0.1);
@@ -161,9 +170,12 @@ BEGIN
           v_period_id, 'validated', v_user_id)
         RETURNING id INTO v_revenue_id;
 
-        -- Commission Lucas Bernard
+        -- Commission Lucas Bernard — network=5%, collab=40%, agency=remainder
+        v_network := ROUND(v_base_amount * 5 / 100, 2);
+        v_collab_amt := ROUND((v_base_amount - v_network) * 40 / 100, 2);
+        v_agency_amt := v_base_amount - v_network - v_collab_amt;
         INSERT INTO commission_splits (revenue_id, collaborator_id, gross_amount, network_rate, network_amount, agency_rate, agency_amount, collaborator_rate, collaborator_amount, compensation_type, payout_status)
-        VALUES (v_revenue_id, v_collab_5, v_base_amount, 5, v_base_amount * 0.05, 55, v_base_amount * 0.5225, 40, v_base_amount * 0.38, 'reversement', 'pending');
+        VALUES (v_revenue_id, v_collab_5, v_base_amount, 5, v_network, ROUND(v_agency_amt / (v_base_amount - v_network) * 100, 2), v_agency_amt, 40, v_collab_amt, 'reversement', 'pending');
       END IF;
 
       -- ---- FRAIS DOSSIER (1-2 par mois) ----
