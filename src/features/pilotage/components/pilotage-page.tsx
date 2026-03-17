@@ -33,6 +33,7 @@ import {
 } from '../hooks/use-profitability';
 import { useAlertsV3, useComputeAlerts } from '@/features/alerts/hooks/use-alerts-v3';
 import { AlertCard } from '@/features/alerts/components/alert-card';
+import { useToast } from '@/components/shared/toast';
 
 // --- Formatting helpers ---
 
@@ -413,6 +414,7 @@ export function PilotagePage() {
   const [activeTab, setActiveTab] = useState<PilotageTab>('collaborator');
   const refreshMutation = useRefreshProfitability();
   const computeAlerts = useComputeAlerts();
+  const { toast } = useToast();
 
   // V3 alerts — filter to profitability domains
   const { data: profitAlerts } = useAlertsV3();
@@ -446,7 +448,10 @@ export function PilotagePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => computeAlerts.mutate()}
+              onClick={() => computeAlerts.mutate(undefined, {
+                onSuccess: () => toast('Alertes vérifiées avec succès', 'success'),
+                onError: () => toast('Erreur lors de la vérification des alertes', 'error'),
+              })}
               disabled={computeAlerts.isPending}
             >
               {computeAlerts.isPending && (

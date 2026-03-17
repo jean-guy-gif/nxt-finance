@@ -8,8 +8,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
 import {
   useAlertsV3,
   useMarkAlertReadV3,
@@ -135,7 +133,7 @@ export function NotificationPanel({ open, onOpenChange }: NotificationPanelProps
         </div>
 
         {/* Alert list */}
-        <ScrollArea className="flex-1 px-4 py-3">
+        <div className="flex-1 overflow-y-auto px-4 py-3">
           {isLoading ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
               Chargement...
@@ -163,7 +161,7 @@ export function NotificationPanel({ open, onOpenChange }: NotificationPanelProps
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </SheetContent>
     </Sheet>
   );
