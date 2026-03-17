@@ -54,3 +54,45 @@ export const NAV_ITEMS = [
   { label: 'Comptable', href: ROUTES.COMPTABLE, icon: 'Users' },
   { label: 'Paramètres', href: ROUTES.PARAMETRES, icon: 'Settings' },
 ] as const;
+
+// ============================================
+// V3 — Cockpit dirigeant
+// ============================================
+
+/** Seuil de confiance minimum pour validation automatique d'un bilan */
+export const BILAN_AUTO_VALIDATION_CONFIDENCE = 95;
+
+/** Seuil de confiance minimum pour autoriser l'analyse */
+export const BILAN_ANALYSIS_CONFIDENCE_GATE = 70;
+
+/** Modèle LLM par défaut */
+export const DEFAULT_LLM_MODEL = 'claude-sonnet-4-6';
+
+/** Provider LLM par défaut */
+export const DEFAULT_LLM_PROVIDER = 'anthropic';
+
+/** Nombre max de retries pour un job */
+export const JOB_MAX_RETRIES = 3;
+
+/** Délai de polling status job (ms) */
+export const JOB_POLL_INTERVAL = 3000;
+
+/** Coefficients scénarios business plan */
+export const BP_SCENARIO_COEFFICIENTS = {
+  pessimistic: 0.8,
+  realistic: 1.0,
+  optimistic: 1.2,
+} as const;
+
+/** Routes V3 */
+export const ROUTES_V3 = {
+  ANALYSE: '/analyse',
+  ANALYSE_IMPORT: '/analyse/import',
+  ANALYSE_DETAIL: (id: string) => `/analyse/${id}`,
+  BUSINESS_PLAN: '/business-plan',
+  BUSINESS_PLAN_DETAIL: (id: string) => `/business-plan/${id}`,
+  PILOTAGE: '/pilotage',
+  PILOTAGE_COLLABORATEUR: (id: string) => `/pilotage/collaborateur/${id}`,
+  DOSSIER_BANCAIRE: '/dossier-bancaire',
+  DOSSIER_BANCAIRE_DETAIL: (id: string) => `/dossier-bancaire/${id}`,
+} as const;
