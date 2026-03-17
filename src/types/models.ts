@@ -41,6 +41,7 @@ import type {
   RatioSource,
   InsightType,
   InsightSeverity,
+  ProfitabilityScope,
 } from './enums';
 
 // --- Base ---
@@ -447,4 +448,35 @@ export interface FinancialInsight extends BaseEntity {
   related_ratios: string[];
   severity: InsightSeverity;
   llm_generation_id: string | null;
+}
+
+// ============================================
+// V3.4 — Pilotage Rentabilité
+// ============================================
+
+export interface ProfitabilitySnapshot extends BaseEntity {
+  agency_id: string;
+  period_month: number;
+  period_year: number;
+  scope: ProfitabilityScope;
+  scope_id: string | null;
+  scope_label: string;
+  revenue_total: number;
+  cost_total: number;
+  margin: number;
+  margin_rate: number;
+  cost_revenue_ratio: number;
+  calculation_version: string;
+  computed_at: string;
+  input_hash: string;
+}
+
+export interface AgencyGroup extends BaseEntity {
+  owner_id: string;
+  name: string;
+}
+
+export interface AgencyGroupMember extends BaseEntity {
+  group_id: string;
+  agency_id: string;
 }

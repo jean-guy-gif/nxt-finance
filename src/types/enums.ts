@@ -551,3 +551,15 @@ export const INSIGHT_TYPE_LABELS: Record<InsightType, string> = {
 
 export const INSIGHT_SEVERITIES = ['info', 'attention', 'critical'] as const;
 export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
+
+// ============================================
+// V3.4 — Pilotage Rentabilité
+// ============================================
+
+export const PROFITABILITY_SCOPES = ['agency', 'collaborator', 'activity'] as const;
+export type ProfitabilityScope = (typeof PROFITABILITY_SCOPES)[number];
+export const PROFITABILITY_SCOPE_LABELS: Record<ProfitabilityScope, string> = {
+  agency: 'Agence',
+  collaborator: 'Collaborateur',
+  activity: 'Activité',
+};
