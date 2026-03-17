@@ -283,6 +283,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   'comment',
   'collaborator',
   'commission_split',
+  'balance_sheet',
 ] as const;
 
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number];
