@@ -14,8 +14,11 @@ import {
   Calculator,
   Users,
   Building2,
+  BarChart3,
+  Landmark,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +45,7 @@ import {
 } from '../hooks/use-dashboard';
 import { useAlertEngine, useAlerts, useDismissAlert } from '@/features/alerts/hooks/use-alerts';
 import { usePayoutSummary } from '@/features/collaborators/hooks/use-collaborators';
+import { DashboardHealthCard } from '@/features/analyse/components/dashboard-health-card';
 
 const QUICK_ACTIONS = [
   { label: 'Ajouter une recette', href: '/recettes?action=new', icon: TrendingUp },
@@ -64,6 +68,7 @@ export function DashboardPage() {
   const alerts = useAlerts(5);
   const dismissMutation = useDismissAlert();
 
+  const router = useRouter();
   const [showTreasury, setShowTreasury] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
 
@@ -162,6 +167,40 @@ export function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* V3 — Financial health score */}
+      <DashboardHealthCard />
+
+      {/* V3 — Cockpit quick access */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Button
+          variant="outline"
+          className="justify-start gap-2 h-auto py-3"
+          onClick={() => router.push('/analyse')}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <div className="text-left">
+            <div className="text-sm font-medium">Analyse financi&egrave;re</div>
+            <div className="text-xs text-muted-foreground">Bilans et ratios</div>
+          </div>
+        </Button>
+        {/* Business Plan — V3.6 placeholder */}
+        <Button variant="outline" className="justify-start gap-2 h-auto py-3" disabled>
+          <TrendingUp className="h-4 w-4" />
+          <div className="text-left">
+            <div className="text-sm font-medium">Business Plan</div>
+            <div className="text-xs text-muted-foreground">Bient&ocirc;t disponible</div>
+          </div>
+        </Button>
+        {/* Dossier bancaire — V3.7 placeholder */}
+        <Button variant="outline" className="justify-start gap-2 h-auto py-3" disabled>
+          <Landmark className="h-4 w-4" />
+          <div className="text-left">
+            <div className="text-sm font-medium">Dossier bancaire</div>
+            <div className="text-xs text-muted-foreground">Bient&ocirc;t disponible</div>
+          </div>
+        </Button>
+      </div>
 
       {/* Alerts */}
       <AlertsSection
