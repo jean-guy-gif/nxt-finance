@@ -436,3 +436,73 @@ export const LLM_GENERATION_STATUSES = [
 ] as const;
 
 export type LlmGenerationStatus = (typeof LLM_GENERATION_STATUSES)[number];
+
+// ============================================
+// V3.2 — Import Bilan
+// ============================================
+
+// --- Balance Sheets ---
+
+export const BALANCE_SHEET_SOURCE_TYPES = [
+  'pdf_auto', 'excel_auto', 'template', 'manual',
+] as const;
+export type BalanceSheetSourceType = (typeof BALANCE_SHEET_SOURCE_TYPES)[number];
+export const BALANCE_SHEET_SOURCE_TYPE_LABELS: Record<BalanceSheetSourceType, string> = {
+  pdf_auto: 'PDF (extraction automatique)',
+  excel_auto: 'Excel (extraction automatique)',
+  template: 'Template NXT Finance',
+  manual: 'Saisie manuelle',
+};
+
+export const BALANCE_SHEET_STATUSES = [
+  'uploaded', 'parsing', 'parsed', 'validating', 'validated', 'rejected',
+] as const;
+export type BalanceSheetStatus = (typeof BALANCE_SHEET_STATUSES)[number];
+export const BALANCE_SHEET_STATUS_LABELS: Record<BalanceSheetStatus, string> = {
+  uploaded: 'Téléversé',
+  parsing: 'Extraction en cours',
+  parsed: 'Extrait',
+  validating: 'En validation',
+  validated: 'Validé',
+  rejected: 'Rejeté',
+};
+
+export const BALANCE_SHEET_SECTIONS = [
+  'actif_immobilise', 'actif_circulant', 'capitaux_propres', 'dettes',
+  'produits_exploitation', 'charges_exploitation',
+  'produits_financiers', 'charges_financieres',
+  'produits_exceptionnels', 'charges_exceptionnelles',
+] as const;
+export type BalanceSheetSection = (typeof BALANCE_SHEET_SECTIONS)[number];
+export const BALANCE_SHEET_SECTION_LABELS: Record<BalanceSheetSection, string> = {
+  actif_immobilise: 'Actif immobilisé',
+  actif_circulant: 'Actif circulant',
+  capitaux_propres: 'Capitaux propres',
+  dettes: 'Dettes',
+  produits_exploitation: "Produits d'exploitation",
+  charges_exploitation: "Charges d'exploitation",
+  produits_financiers: 'Produits financiers',
+  charges_financieres: 'Charges financières',
+  produits_exceptionnels: 'Produits exceptionnels',
+  charges_exceptionnelles: 'Charges exceptionnelles',
+};
+
+// --- Coherence Checks ---
+
+export const COHERENCE_CHECK_TYPES = [
+  'actif_passif_balance', 'totals_consistency', 'missing_items', 'cross_period', 'duplicate',
+] as const;
+export type CoherenceCheckType = (typeof COHERENCE_CHECK_TYPES)[number];
+export const COHERENCE_CHECK_TYPE_LABELS: Record<CoherenceCheckType, string> = {
+  actif_passif_balance: 'Équilibre actif / passif',
+  totals_consistency: 'Cohérence des totaux',
+  missing_items: 'Postes manquants',
+  cross_period: 'Comparaison inter-périodes',
+  duplicate: 'Doublons détectés',
+};
+
+export const COHERENCE_CHECK_STATUSES = ['passed', 'warning', 'failed'] as const;
+export type CoherenceCheckStatus = (typeof COHERENCE_CHECK_STATUSES)[number];
+
+export const COHERENCE_CHECK_SEVERITIES = ['info', 'warning', 'critical'] as const;
+export type CoherenceCheckSeverity = (typeof COHERENCE_CHECK_SEVERITIES)[number];

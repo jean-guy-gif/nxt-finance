@@ -29,6 +29,12 @@ import type {
   JobStatus,
   LlmOutputType,
   LlmGenerationStatus,
+  BalanceSheetSourceType,
+  BalanceSheetStatus,
+  BalanceSheetSection,
+  CoherenceCheckType,
+  CoherenceCheckStatus,
+  CoherenceCheckSeverity,
 } from './enums';
 
 // --- Base ---
@@ -340,4 +346,51 @@ export interface LlmGeneration {
   error_message: string | null;
   generated_at: string | null;
   created_at: string;
+}
+
+// ============================================
+// V3.2 — Import Bilan
+// ============================================
+
+export interface BalanceSheet extends BaseEntity {
+  agency_id: string;
+  fiscal_year: number;
+  source_type: BalanceSheetSourceType;
+  source_file_path: string | null;
+  overall_confidence: number;
+  status: BalanceSheetStatus;
+  validation_notes: string | null;
+  validated_by: string | null;
+  validated_at: string | null;
+  version_number: number;
+  is_current: boolean;
+  parent_id: string | null;
+  archived_reason: string | null;
+
+  // Relations (optional, populated by joins)
+  items?: BalanceSheetItem[];
+  checks?: BalanceSheetCheck[];
+  validator?: UserProfile;
+}
+
+export interface BalanceSheetItem extends BaseEntity {
+  balance_sheet_id: string;
+  section: BalanceSheetSection;
+  category: string;
+  pcg_code: string | null;
+  amount: number;
+  amount_n_minus_1: number | null;
+  confidence_score: number;
+  is_validated: boolean;
+  original_label: string;
+}
+
+export interface BalanceSheetCheck extends BaseEntity {
+  balance_sheet_id: string;
+  check_type: CoherenceCheckType;
+  status: CoherenceCheckStatus;
+  severity: CoherenceCheckSeverity;
+  expected_value: number | null;
+  actual_value: number | null;
+  message: string;
 }
