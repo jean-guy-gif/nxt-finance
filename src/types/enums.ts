@@ -364,3 +364,75 @@ export const PERIOD_VIEW_LABELS: Record<PeriodView, string> = {
   quarterly: 'Trimestriel',
   yearly: 'Annuel',
 };
+
+// ============================================
+// V3 — Processing & LLM
+// ============================================
+
+// --- Processing Jobs ---
+
+export const JOB_TYPES = [
+  'bilan_parsing',
+  'analysis_generation',
+  'bp_generation',
+  'dossier_generation',
+  'dossier_export',
+  'llm_generation',
+] as const;
+
+export type JobType = (typeof JOB_TYPES)[number];
+
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  bilan_parsing: 'Parsing bilan',
+  analysis_generation: 'Génération analyse',
+  bp_generation: 'Génération business plan',
+  dossier_generation: 'Génération dossier bancaire',
+  dossier_export: 'Export dossier',
+  llm_generation: 'Génération IA',
+};
+
+export const JOB_STATUSES = [
+  'queued',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled',
+] as const;
+
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  queued: 'En attente',
+  processing: 'En cours',
+  completed: 'Terminé',
+  failed: 'Échoué',
+  cancelled: 'Annulé',
+};
+
+// --- LLM Generations ---
+
+export const LLM_OUTPUT_TYPES = [
+  'financial_insight',
+  'bp_narrative',
+  'alert_recommendation',
+  'slide_narrative',
+  'director_summary',
+] as const;
+
+export type LlmOutputType = (typeof LLM_OUTPUT_TYPES)[number];
+
+export const LLM_OUTPUT_TYPE_LABELS: Record<LlmOutputType, string> = {
+  financial_insight: 'Insight financier',
+  bp_narrative: 'Narratif business plan',
+  alert_recommendation: 'Recommandation alerte',
+  slide_narrative: 'Narratif slide',
+  director_summary: 'Synthèse dirigeant',
+};
+
+export const LLM_GENERATION_STATUSES = [
+  'pending',
+  'completed',
+  'failed',
+] as const;
+
+export type LlmGenerationStatus = (typeof LLM_GENERATION_STATUSES)[number];

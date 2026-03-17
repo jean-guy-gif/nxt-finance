@@ -25,6 +25,10 @@ import type {
   CollaboratorStatus,
   PayoutStatus,
   CompensationType,
+  JobType,
+  JobStatus,
+  LlmOutputType,
+  LlmGenerationStatus,
 } from './enums';
 
 // --- Base ---
@@ -300,4 +304,40 @@ export interface CommissionSplit {
   created_at: string;
   // Joined
   collaborator?: Collaborator;
+}
+
+// ============================================
+// V3 — Processing & LLM
+// ============================================
+
+export interface ProcessingJob extends BaseEntity {
+  agency_id: string;
+  job_type: JobType;
+  status: JobStatus;
+  related_type: string;
+  related_id: string;
+  progress: number;
+  error_message: string | null;
+  triggered_by: string | null;
+  payload_json: Record<string, unknown> | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface LlmGeneration {
+  id: string;
+  agency_id: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  input_refs: Record<string, unknown>;
+  output_type: LlmOutputType;
+  output_id: string | null;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  duration_ms: number | null;
+  status: LlmGenerationStatus;
+  error_message: string | null;
+  generated_at: string | null;
+  created_at: string;
 }
