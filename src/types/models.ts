@@ -35,6 +35,12 @@ import type {
   CoherenceCheckType,
   CoherenceCheckStatus,
   CoherenceCheckSeverity,
+  AnalysisLevel,
+  AnalysisStatus,
+  RatioStatus,
+  RatioSource,
+  InsightType,
+  InsightSeverity,
 } from './enums';
 
 // --- Base ---
@@ -393,4 +399,52 @@ export interface BalanceSheetCheck extends BaseEntity {
   expected_value: number | null;
   actual_value: number | null;
   message: string;
+}
+
+// ============================================
+// V3.3 — Analyse Financière
+// ============================================
+
+export interface FinancialAnalysis extends BaseEntity {
+  agency_id: string;
+  balance_sheet_id: string | null;
+  fiscal_year: number;
+  analysis_level: AnalysisLevel;
+  status: AnalysisStatus;
+  health_score: number | null;
+  version_number: number;
+  is_current: boolean;
+  parent_id: string | null;
+  archived_reason: string | null;
+
+  // Relations
+  ratios?: FinancialRatio[];
+  insights?: FinancialInsight[];
+  balance_sheet?: BalanceSheet;
+}
+
+export interface FinancialRatio extends BaseEntity {
+  analysis_id: string;
+  ratio_key: string;
+  value: number;
+  value_n_minus_1: number | null;
+  benchmark_min: number | null;
+  benchmark_max: number | null;
+  status: RatioStatus;
+  source: RatioSource;
+  calculation_version: string;
+  computed_at: string;
+  input_hash: string;
+  formula_key: string;
+}
+
+export interface FinancialInsight extends BaseEntity {
+  analysis_id: string;
+  insight_type: InsightType;
+  category: string;
+  title: string;
+  content: string;
+  related_ratios: string[];
+  severity: InsightSeverity;
+  llm_generation_id: string | null;
 }

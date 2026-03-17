@@ -284,6 +284,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   'collaborator',
   'commission_split',
   'balance_sheet',
+  'financial_analysis',
 ] as const;
 
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number];
@@ -507,3 +508,46 @@ export type CoherenceCheckStatus = (typeof COHERENCE_CHECK_STATUSES)[number];
 
 export const COHERENCE_CHECK_SEVERITIES = ['info', 'warning', 'critical'] as const;
 export type CoherenceCheckSeverity = (typeof COHERENCE_CHECK_SEVERITIES)[number];
+
+// ============================================
+// V3.3 — Analyse Financière
+// ============================================
+
+export const ANALYSIS_LEVELS = ['basic', 'enriched', 'complete'] as const;
+export type AnalysisLevel = (typeof ANALYSIS_LEVELS)[number];
+export const ANALYSIS_LEVEL_LABELS: Record<AnalysisLevel, string> = {
+  basic: 'Basique (données NXT)',
+  enriched: 'Enrichi (NXT + bilan)',
+  complete: 'Complet (NXT + bilan validé + N-1)',
+};
+
+export const ANALYSIS_STATUSES = ['computing', 'ready', 'archived'] as const;
+export type AnalysisStatus = (typeof ANALYSIS_STATUSES)[number];
+export const ANALYSIS_STATUS_LABELS: Record<AnalysisStatus, string> = {
+  computing: 'Calcul en cours',
+  ready: 'Prête',
+  archived: 'Archivée',
+};
+
+export const RATIO_STATUSES = ['healthy', 'warning', 'critical'] as const;
+export type RatioStatus = (typeof RATIO_STATUSES)[number];
+export const RATIO_STATUS_LABELS: Record<RatioStatus, string> = {
+  healthy: 'Sain',
+  warning: 'Vigilance',
+  critical: 'Critique',
+};
+
+export const RATIO_SOURCES = ['bilan', 'nxt', 'computed'] as const;
+export type RatioSource = (typeof RATIO_SOURCES)[number];
+
+export const INSIGHT_TYPES = ['strength', 'weakness', 'anomaly', 'recommendation'] as const;
+export type InsightType = (typeof INSIGHT_TYPES)[number];
+export const INSIGHT_TYPE_LABELS: Record<InsightType, string> = {
+  strength: 'Point fort',
+  weakness: 'Point faible',
+  anomaly: 'Anomalie',
+  recommendation: 'Recommandation',
+};
+
+export const INSIGHT_SEVERITIES = ['info', 'attention', 'critical'] as const;
+export type InsightSeverity = (typeof INSIGHT_SEVERITIES)[number];
