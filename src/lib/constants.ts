@@ -65,11 +65,11 @@ export const BILAN_AUTO_VALIDATION_CONFIDENCE = 95;
 /** Seuil de confiance minimum pour autoriser l'analyse */
 export const BILAN_ANALYSIS_CONFIDENCE_GATE = 70;
 
-/** Modèle LLM par défaut */
-export const DEFAULT_LLM_MODEL = 'claude-sonnet-4-6';
+/** Modèle LLM par défaut (format OpenRouter) */
+export const DEFAULT_LLM_MODEL = 'anthropic/claude-sonnet-4';
 
 /** Provider LLM par défaut */
-export const DEFAULT_LLM_PROVIDER = 'anthropic';
+export const DEFAULT_LLM_PROVIDER = 'openrouter';
 
 /** Nombre max de retries pour un job */
 export const JOB_MAX_RETRIES = 3;

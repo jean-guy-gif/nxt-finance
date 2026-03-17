@@ -7,6 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// OpenRouter API — compatible OpenAI format
+// Supports Claude, Llama, Mistral, etc. via unified API
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -26,7 +30,7 @@ Deno.serve(async (req: Request) => {
       userPrompt,
       maxTokens = 4096,
       temperature = 0.3,
-      model = "claude-sonnet-4-6",
+      model = "anthropic/claude-sonnet-4",
     } = await req.json();
 
     // Validate required fields
@@ -42,10 +46,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "ANTHROPIC_API_KEY is not configured" }),
+        JSON.stringify({ error: "OPENROUTER_API_KEY is not configured" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -53,35 +57,35 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Call Claude API
-    const claudeResponse = await fetch(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          temperature,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-        }),
-      }
-    );
+    // Call OpenRouter API (OpenAI-compatible format)
+    const llmResponse = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://nxt-finance.vercel.app",
+        "X-Title": "NXT Finance",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
 
-    if (!claudeResponse.ok) {
-      const errorBody = await claudeResponse.text();
+    if (!llmResponse.ok) {
+      const errorBody = await llmResponse.text();
       console.error(
-        `Claude API error: ${claudeResponse.status} — ${errorBody}`
+        `OpenRouter API error: ${llmResponse.status} — ${errorBody}`
       );
       return new Response(
         JSON.stringify({
-          error: "Claude API error",
-          status: claudeResponse.status,
+          error: "LLM API error",
+          status: llmResponse.status,
           details: errorBody,
         }),
         {
@@ -91,21 +95,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const claudeData = await claudeResponse.json();
+    const data = await llmResponse.json();
 
-    // Extract text content from Claude response
-    const content =
-      claudeData.content
-        ?.filter((block: { type: string }) => block.type === "text")
-        .map((block: { text: string }) => block.text)
-        .join("") ?? "";
+    // Extract content from OpenAI-compatible response
+    const content = data.choices?.[0]?.message?.content ?? "";
+    const usage = data.usage ?? {};
 
     return new Response(
       JSON.stringify({
         content,
         usage: {
-          input_tokens: claudeData.usage?.input_tokens ?? 0,
-          output_tokens: claudeData.usage?.output_tokens ?? 0,
+          input_tokens: usage.prompt_tokens ?? 0,
+          output_tokens: usage.completion_tokens ?? 0,
         },
       }),
       {
