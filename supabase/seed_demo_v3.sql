@@ -31,26 +31,36 @@ BEGIN
   SELECT id INTO v_user FROM user_profiles LIMIT 1;
 
   -- ============================================
-  -- NETTOYAGE COMPLET
+  -- NETTOYAGE COMPLET (ordre FK respecté)
   -- ============================================
-  DELETE FROM commission_splits WHERE revenue_id IN (SELECT id FROM revenues WHERE agency_id = v_agency);
-  DELETE FROM revenues WHERE agency_id = v_agency;
-  DELETE FROM expenses WHERE agency_id = v_agency;
-  DELETE FROM profitability_snapshots WHERE agency_id = v_agency;
-  DELETE FROM financial_insights WHERE analysis_id IN (SELECT id FROM financial_analyses WHERE agency_id = v_agency);
-  DELETE FROM financial_ratios WHERE analysis_id IN (SELECT id FROM financial_analyses WHERE agency_id = v_agency);
-  DELETE FROM financial_analyses WHERE agency_id = v_agency;
+  -- 1. Business plans (dépend de financial_analyses)
   DELETE FROM bp_narratives WHERE business_plan_id IN (SELECT id FROM business_plans WHERE agency_id = v_agency);
   DELETE FROM bp_projections WHERE business_plan_id IN (SELECT id FROM business_plans WHERE agency_id = v_agency);
   DELETE FROM bp_hypotheses WHERE business_plan_id IN (SELECT id FROM business_plans WHERE agency_id = v_agency);
   DELETE FROM business_plans WHERE agency_id = v_agency;
+  -- 2. Financial analyses (maintenant libérées des FK business_plans)
+  DELETE FROM financial_insights WHERE analysis_id IN (SELECT id FROM financial_analyses WHERE agency_id = v_agency);
+  DELETE FROM financial_ratios WHERE analysis_id IN (SELECT id FROM financial_analyses WHERE agency_id = v_agency);
+  DELETE FROM financial_analyses WHERE agency_id = v_agency;
+  -- 3. Balance sheets
   DELETE FROM balance_sheet_checks WHERE balance_sheet_id IN (SELECT id FROM balance_sheets WHERE agency_id = v_agency);
   DELETE FROM balance_sheet_items WHERE balance_sheet_id IN (SELECT id FROM balance_sheets WHERE agency_id = v_agency);
   DELETE FROM balance_sheets WHERE agency_id = v_agency;
+  -- 4. Commissions (dépend de revenues + collaborators)
+  DELETE FROM commission_splits WHERE revenue_id IN (SELECT id FROM revenues WHERE agency_id = v_agency);
+  -- 5. Revenues (dépend de accounting_periods)
+  DELETE FROM revenues WHERE agency_id = v_agency;
+  -- 6. Expenses (dépend de accounting_periods)
+  DELETE FROM expenses WHERE agency_id = v_agency;
+  -- 7. Alertes, jobs, LLM
   DELETE FROM alerts WHERE agency_id = v_agency;
   DELETE FROM processing_jobs WHERE agency_id = v_agency;
   DELETE FROM llm_generations WHERE agency_id = v_agency;
+  -- 8. Profitability
+  DELETE FROM profitability_snapshots WHERE agency_id = v_agency;
+  -- 9. Collaborateurs
   DELETE FROM collaborators WHERE agency_id = v_agency;
+  -- 10. Périodes (plus rien ne les référence)
   DELETE FROM accounting_periods WHERE agency_id = v_agency;
 
   -- ============================================
