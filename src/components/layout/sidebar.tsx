@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUiStore } from '@/stores/ui-store';
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
 
 const V3_NAV_ITEMS = [
   { label: 'Analyse financière', href: '/analyse', icon: BarChart3 },
+  { label: 'Pilotage rentabilité', href: '/pilotage', icon: Target },
 ] as const;
 
 const BOTTOM_NAV = [
