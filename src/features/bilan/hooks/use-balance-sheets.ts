@@ -16,6 +16,7 @@ import {
   uploadBilanFile,
 } from '../services/balance-sheet-service';
 import { createJob } from '@/features/shared/services/job-orchestrator';
+import { triggerBilanParsing } from '../services/parse-bilan-trigger';
 import type { BalanceSheetSourceType } from '@/types/enums';
 
 // ============================================
@@ -90,6 +91,18 @@ export function useUploadAndCreateBalanceSheet() {
         relatedType: 'balance_sheet',
         relatedId: balanceSheet.id,
         triggeredBy: userId,
+      });
+
+      // d) Trigger parsing (Edge Function + persist items + coherence checks)
+      // Fire and forget — the wizard polls job status via useJobStatus
+      triggerBilanParsing(
+        supabase,
+        jobResult.job.id,
+        balanceSheet.id,
+        filePath,
+        input.sourceType
+      ).catch((err) => {
+        console.error('Bilan parsing trigger failed:', err);
       });
 
       return { balanceSheet, jobId: jobResult.job.id };
