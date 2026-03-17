@@ -563,3 +563,36 @@ export const PROFITABILITY_SCOPE_LABELS: Record<ProfitabilityScope, string> = {
   collaborator: 'Collaborateur',
   activity: 'Activité',
 };
+
+// ============================================
+// V3.5 — Alertes Intelligentes
+// ============================================
+
+export const ALERT_DOMAINS = [
+  'treasury', 'vat', 'pre_accounting', 'accountant',
+  'profitability_agency', 'profitability_collaborator',
+  'business_trend', 'business_plan_tracking',
+] as const;
+export type AlertDomain = (typeof ALERT_DOMAINS)[number];
+export const ALERT_DOMAIN_LABELS: Record<AlertDomain, string> = {
+  treasury: 'Trésorerie',
+  vat: 'TVA',
+  pre_accounting: 'Pré-comptabilité',
+  accountant: 'Comptable',
+  profitability_agency: 'Rentabilité agence',
+  profitability_collaborator: 'Rentabilité collaborateur',
+  business_trend: 'Tendance business',
+  business_plan_tracking: 'Suivi business plan',
+};
+
+export const ALERT_LIFECYCLES = [
+  'active', 'read', 'treated', 'snoozed', 'dismissed',
+] as const;
+export type AlertLifecycle = (typeof ALERT_LIFECYCLES)[number];
+export const ALERT_LIFECYCLE_LABELS: Record<AlertLifecycle, string> = {
+  active: 'Active',
+  read: 'Lue',
+  treated: 'Traitée',
+  snoozed: 'Reportée',
+  dismissed: 'Ignorée',
+};

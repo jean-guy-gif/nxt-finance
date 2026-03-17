@@ -42,6 +42,8 @@ import type {
   InsightType,
   InsightSeverity,
   ProfitabilityScope,
+  AlertDomain,
+  AlertLifecycle,
 } from './enums';
 
 // --- Base ---
@@ -223,6 +225,18 @@ export interface Alert {
   is_read: boolean;
   is_dismissed: boolean;
   created_at: string;
+  // V3.5 fields
+  alert_domain: AlertDomain | null;
+  indicator_key: string | null;
+  measured_value: number | null;
+  threshold_value: number | null;
+  recommendation: string | null;
+  recommendation_at: string | null;
+  llm_generation_id: string | null;
+  lifecycle: AlertLifecycle;
+  snoozed_until: string | null;
+  treated_at: string | null;
+  related_entity_name: string | null;
 }
 
 // --- Commentaire cabinet ---
