@@ -285,6 +285,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   'commission_split',
   'balance_sheet',
   'financial_analysis',
+  'business_plan',
 ] as const;
 
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number];
@@ -596,3 +597,38 @@ export const ALERT_LIFECYCLE_LABELS: Record<AlertLifecycle, string> = {
   snoozed: 'Reportée',
   dismissed: 'Ignorée',
 };
+
+// ============================================
+// V3.6 — Business Plan N+1
+// ============================================
+
+export const BP_STATUSES = ['draft', 'computing', 'ready', 'archived'] as const;
+export type BpStatus = (typeof BP_STATUSES)[number];
+export const BP_STATUS_LABELS: Record<BpStatus, string> = {
+  draft: 'Brouillon',
+  computing: 'Calcul en cours',
+  ready: 'Prêt',
+  archived: 'Archivé',
+};
+
+export const BP_SCENARIOS = ['pessimistic', 'realistic', 'optimistic'] as const;
+export type BpScenario = (typeof BP_SCENARIOS)[number];
+export const BP_SCENARIO_LABELS: Record<BpScenario, string> = {
+  pessimistic: 'Pessimiste',
+  realistic: 'Réaliste',
+  optimistic: 'Optimiste',
+};
+
+export const BP_HYPOTHESIS_LEVELS = ['auto', 'macro', 'detailed'] as const;
+export type BpHypothesisLevel = (typeof BP_HYPOTHESIS_LEVELS)[number];
+export const BP_HYPOTHESIS_LEVEL_LABELS: Record<BpHypothesisLevel, string> = {
+  auto: 'Automatique',
+  macro: 'Macro',
+  detailed: 'Détaillé',
+};
+
+export const BP_HYPOTHESIS_VALUE_TYPES = ['percentage', 'amount', 'count'] as const;
+export type BpHypothesisValueType = (typeof BP_HYPOTHESIS_VALUE_TYPES)[number];
+
+export const BP_PERIOD_GRANULARITIES = ['annual', 'monthly'] as const;
+export type BpPeriodGranularity = (typeof BP_PERIOD_GRANULARITIES)[number];

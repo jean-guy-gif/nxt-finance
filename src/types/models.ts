@@ -44,6 +44,11 @@ import type {
   ProfitabilityScope,
   AlertDomain,
   AlertLifecycle,
+  BpStatus,
+  BpScenario,
+  BpHypothesisLevel,
+  BpHypothesisValueType,
+  BpPeriodGranularity,
 } from './enums';
 
 // --- Base ---
@@ -493,4 +498,61 @@ export interface AgencyGroup extends BaseEntity {
 export interface AgencyGroupMember extends BaseEntity {
   group_id: string;
   agency_id: string;
+}
+
+// ============================================
+// V3.6 — Business Plan N+1
+// ============================================
+
+export interface BusinessPlan extends BaseEntity {
+  agency_id: string;
+  analysis_id: string | null;
+  target_year: number;
+  status: BpStatus;
+  version_number: number;
+  is_current: boolean;
+  parent_id: string | null;
+  archived_reason: string | null;
+
+  // Relations
+  hypotheses?: BpHypothesis[];
+  projections?: BpProjection[];
+  narratives?: BpNarrative[];
+}
+
+export interface BpHypothesis extends BaseEntity {
+  business_plan_id: string;
+  scenario: BpScenario;
+  level: BpHypothesisLevel;
+  category: string;
+  parent_category: string | null;
+  label: string;
+  value: number;
+  value_type: BpHypothesisValueType;
+  period_granularity: BpPeriodGranularity;
+  month: number | null;
+  is_user_override: boolean;
+  sort_order: number;
+}
+
+export interface BpProjection extends BaseEntity {
+  business_plan_id: string;
+  scenario: BpScenario;
+  month: number;
+  revenue_projected: number;
+  expenses_projected: number;
+  margin_projected: number;
+  treasury_projected: number;
+  details_json: Record<string, unknown> | null;
+  calculation_version: string;
+  computed_at: string;
+  input_hash: string;
+}
+
+export interface BpNarrative extends BaseEntity {
+  business_plan_id: string;
+  scenario: BpScenario;
+  section: string;
+  content: string;
+  llm_generation_id: string | null;
 }
