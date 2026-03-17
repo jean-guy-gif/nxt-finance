@@ -212,39 +212,60 @@ export async function generateAutoHypotheses(
   agencyId: string,
   targetYear: number
 ): Promise<BpHypothesisInput[]> {
-  // a) Fetch revenues for targetYear-1
+  // Find the best reference year: most recent complete year with data
+  // Try targetYear-1 first, fallback to targetYear-2, then targetYear-3
+  let refYear = targetYear - 1;
+  let compYear = targetYear - 2;
+
+  for (let tryYear = targetYear - 1; tryYear >= targetYear - 3; tryYear--) {
+    const { count } = await supabase
+      .from('revenues')
+      .select('*', { count: 'exact', head: true })
+      .eq('agency_id', agencyId)
+      .gte('date', `${tryYear}-01-01`)
+      .lte('date', `${tryYear}-12-31`)
+      .in('status', VALID_REVENUE_STATUSES);
+
+    if ((count ?? 0) >= 12) { // At least 12 revenues = likely a full year
+      refYear = tryYear;
+      compYear = tryYear - 1;
+      break;
+    }
+  }
+
+  // a) Fetch revenues for reference year (N-1 or best available)
   const { data: revenuesN1 } = await supabase
     .from('revenues')
     .select('amount_ht, amount, date, type')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 1}-01-01`)
-    .lte('date', `${targetYear - 1}-12-31`)
+    .gte('date', `${refYear}-01-01`)
+    .lte('date', `${refYear}-12-31`)
     .in('status', VALID_REVENUE_STATUSES);
 
-  // Fetch revenues for targetYear-2 (if available)
+  // Fetch revenues for comparison year (N-2 or refYear-1)
   const { data: revenuesN2 } = await supabase
     .from('revenues')
     .select('amount_ht, amount, date, type')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 2}-01-01`)
-    .lte('date', `${targetYear - 2}-12-31`)
+    .gte('date', `${compYear}-01-01`)
+    .lte('date', `${compYear}-12-31`)
     .in('status', VALID_REVENUE_STATUSES);
 
-  // Fetch expenses for targetYear-1
+  // Fetch expenses for reference year
   const { data: expensesN1 } = await supabase
     .from('expenses')
     .select('amount_ttc, date')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 1}-01-01`)
-    .lte('date', `${targetYear - 1}-12-31`);
+    .gte('date', `${refYear}-01-01`)
+    .lte('date', `${refYear}-12-31`);
 
-  // Fetch expenses for targetYear-2
+  // Fetch expenses for comparison year
   const { data: expensesN2 } = await supabase
     .from('expenses')
     .select('amount_ttc, date')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 2}-01-01`)
-    .lte('date', `${targetYear - 2}-12-31`);
+    .gte('date', `${compYear}-01-01`)
+    .lte('date', `${compYear}-12-31`);
 
   const revenues1 = revenuesN1 ?? [];
   const revenues2 = revenuesN2 ?? [];
@@ -457,21 +478,34 @@ async function computeProjections(
   const effectiveCaGrowth = caGrowth * coefficient;
   const effectiveChargesGrowth = chargesGrowth * coefficient;
 
-  // Fetch historical monthly data (targetYear-1)
+  // Find best reference year for historical data (same logic as generateAutoHypotheses)
+  let histRefYear = targetYear - 1;
+  for (let tryYear = targetYear - 1; tryYear >= targetYear - 3; tryYear--) {
+    const { count } = await supabase
+      .from('revenues')
+      .select('*', { count: 'exact', head: true })
+      .eq('agency_id', agencyId)
+      .gte('date', `${tryYear}-01-01`)
+      .lte('date', `${tryYear}-12-31`)
+      .in('status', VALID_REVENUE_STATUSES);
+    if ((count ?? 0) >= 12) { histRefYear = tryYear; break; }
+  }
+
+  // Fetch historical monthly data from best reference year
   const { data: histRevenues } = await supabase
     .from('revenues')
     .select('amount_ht, amount, date')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 1}-01-01`)
-    .lte('date', `${targetYear - 1}-12-31`)
+    .gte('date', `${histRefYear}-01-01`)
+    .lte('date', `${histRefYear}-12-31`)
     .in('status', VALID_REVENUE_STATUSES);
 
   const { data: histExpenses } = await supabase
     .from('expenses')
     .select('amount_ttc, date')
     .eq('agency_id', agencyId)
-    .gte('date', `${targetYear - 1}-01-01`)
-    .lte('date', `${targetYear - 1}-12-31`);
+    .gte('date', `${histRefYear}-01-01`)
+    .lte('date', `${histRefYear}-12-31`);
 
   // Group historical revenue by month
   const monthlyRevenue = Array(12).fill(0) as number[];
