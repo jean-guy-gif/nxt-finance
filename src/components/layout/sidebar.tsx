@@ -35,6 +35,7 @@ const NAV_ITEMS = [
 const V3_NAV_ITEMS = [
   { label: 'Analyse financière', href: '/analyse', icon: BarChart3 },
   { label: 'Pilotage rentabilité', href: '/pilotage', icon: Target },
+  { label: 'Business Plan', href: '/business-plan', icon: TrendingUp },
 ] as const;
 
 const BOTTOM_NAV = [
