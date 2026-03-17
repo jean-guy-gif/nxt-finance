@@ -44,6 +44,8 @@ import {
   useTreasury,
 } from '../hooks/use-dashboard';
 import { useAlertEngine, useAlerts, useDismissAlert } from '@/features/alerts/hooks/use-alerts';
+import { useAlertsV3 } from '@/features/alerts/hooks/use-alerts-v3';
+import { AlertCard } from '@/features/alerts/components/alert-card';
 import { usePayoutSummary } from '@/features/collaborators/hooks/use-collaborators';
 import { DashboardHealthCard } from '@/features/analyse/components/dashboard-health-card';
 
@@ -67,6 +69,9 @@ export function DashboardPage() {
   useAlertEngine();
   const alerts = useAlerts(5);
   const dismissMutation = useDismissAlert();
+
+  // V3 alerts — top 3 most critical for dashboard widget
+  const alertsV3 = useAlertsV3();
 
   const router = useRouter();
   const [showTreasury, setShowTreasury] = useState(false);
@@ -170,6 +175,22 @@ export function DashboardPage() {
 
       {/* V3 — Financial health score */}
       <DashboardHealthCard />
+
+      {/* V3 — Top 3 priority alerts */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Alertes prioritaires
+          </h3>
+        </div>
+        {(alertsV3.data ?? []).slice(0, 3).map((alert) => (
+          <AlertCard key={alert.id} alert={alert} compact />
+        ))}
+        {alertsV3.data && alertsV3.data.length === 0 && (
+          <p className="text-sm text-muted-foreground">Aucune alerte active</p>
+        )}
+      </div>
 
       {/* V3 — Cockpit quick access */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

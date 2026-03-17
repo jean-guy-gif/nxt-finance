@@ -31,6 +31,8 @@ import {
   useActivityProfitability,
   useRefreshProfitability,
 } from '../hooks/use-profitability';
+import { useAlertsV3, useComputeAlerts } from '@/features/alerts/hooks/use-alerts-v3';
+import { AlertCard } from '@/features/alerts/components/alert-card';
 
 // --- Formatting helpers ---
 
@@ -410,6 +412,15 @@ function AgencyTab() {
 export function PilotagePage() {
   const [activeTab, setActiveTab] = useState<PilotageTab>('collaborator');
   const refreshMutation = useRefreshProfitability();
+  const computeAlerts = useComputeAlerts();
+
+  // V3 alerts — filter to profitability domains
+  const { data: profitAlerts } = useAlertsV3();
+  const relevantAlerts = (profitAlerts ?? []).filter(
+    (a) =>
+      a.alert_domain === 'profitability_agency' ||
+      a.alert_domain === 'profitability_collaborator',
+  );
 
   return (
     <div className="space-y-6">
@@ -418,24 +429,60 @@ export function PilotagePage() {
         title="Pilotage rentabilit\u00e9"
         description="Suivi de la rentabilit\u00e9 par collaborateur, activit\u00e9 et agence"
         actions={
-          <Button
-            onClick={() => refreshMutation.mutate()}
-            disabled={refreshMutation.isPending}
-            variant="outline"
-            size="sm"
-          >
-            {refreshMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Recalculer
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
+              variant="outline"
+              size="sm"
+            >
+              {refreshMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Recalculer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => computeAlerts.mutate()}
+              disabled={computeAlerts.isPending}
+            >
+              {computeAlerts.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              V\u00e9rifier les alertes
+            </Button>
+          </div>
         }
       />
 
       {/* Director Summary Banner */}
       <DirectorSummaryBanner />
+
+      {/* Profitability alerts */}
+      {relevantAlerts.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Alertes rentabilit\u00e9
+            </h3>
+            {relevantAlerts.length > 5 && (
+              <a
+                href="/notifications"
+                className="text-xs text-primary hover:underline"
+              >
+                Voir toutes les alertes
+              </a>
+            )}
+          </div>
+          {relevantAlerts.slice(0, 5).map((alert) => (
+            <AlertCard key={alert.id} alert={alert} compact />
+          ))}
+        </div>
+      )}
 
       {/* Tab navigation */}
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
