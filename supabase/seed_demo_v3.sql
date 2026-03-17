@@ -192,45 +192,45 @@ BEGIN
       -- ============================================
 
       -- Loyer + charges (fixe)
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-01')::date, 'SCI Immobilier Centre', 'Loyer bureau ' || v_month || '/' || v_year,
         2400, 2000, 400, 'loyer_charges', 'transfer', v_period_id, 'validated', v_user_id);
 
       -- Assurances (fixe)
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-05')::date, 'AXA Pro', 'Assurance RC Pro ' || v_month || '/' || v_year,
         380, 316.67, 63.33, 'assurances', 'direct_debit', v_period_id, 'validated', v_user_id);
 
       -- Téléphonie/Internet (fixe)
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-10')::date, 'Orange Pro', 'Forfaits téléphone + internet ' || v_month || '/' || v_year,
         450, 375, 75, 'telephonie_internet', 'direct_debit', v_period_id, 'validated', v_user_id);
 
       -- Logiciels/Abonnements (fixe)
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-15')::date, 'Divers SaaS', 'Abonnements logiciels ' || v_month || '/' || v_year,
         650, 541.67, 108.33, 'logiciels_abonnements', 'card', v_period_id, 'validated', v_user_id);
 
       -- Publicité/Marketing (variable, saisonnier)
       v_base_amount := 800 * v_seasonality * (0.8 + random() * 0.4);
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-12')::date, 'Divers marketing', 'Publicité ' || v_month || '/' || v_year,
         v_base_amount, v_base_amount / 1.2, v_base_amount - v_base_amount / 1.2, 'publicite_marketing', 'card', v_period_id, 'validated', v_user_id);
 
       -- Carburant (variable)
       v_base_amount := 350 + floor(random() * 200);
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-18')::date, 'Stations-service', 'Carburant ' || v_month || '/' || v_year,
         v_base_amount, v_base_amount / 1.2, v_base_amount - v_base_amount / 1.2, 'carburant', 'card', v_period_id, 'validated', v_user_id);
 
       -- Frais bancaires (fixe)
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-28')::date, 'Banque Populaire', 'Frais bancaires ' || v_month || '/' || v_year,
         85, 85, 0, 'frais_bancaires', 'direct_debit', v_period_id, 'validated', v_user_id);
 
       -- Repas/déplacements (variable)
       v_base_amount := 200 + floor(random() * 300);
-      INSERT INTO expenses (agency_id, date, supplier, label, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
+      INSERT INTO expenses (agency_id, date, supplier, comment, amount_ttc, amount_ht, vat_amount, category, payment_method, period_id, status, created_by)
       VALUES (v_agency_id, (v_date || '-22')::date, 'Divers', 'Repas professionnels ' || v_month || '/' || v_year,
         v_base_amount, v_base_amount / 1.1, v_base_amount - v_base_amount / 1.1, 'repas', 'card', v_period_id, 'validated', v_user_id);
 
