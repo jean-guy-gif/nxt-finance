@@ -36,7 +36,7 @@ export async function GET() {
         userPrompt: 'Réponds exactement : "LLM OK"',
         maxTokens: 20,
         temperature: 0,
-        model: 'anthropic/claude-sonnet-4-20250514',
+        model: 'anthropic/claude-3.5-sonnet',
       }),
     });
 
