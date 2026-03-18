@@ -102,15 +102,25 @@ export function AnalyseMainPage() {
     )[0];
 
   const handleCreateAnalysis = () => {
-    if (!canCreateAnalysis || !sheets) return;
-    // Use the most recent balance sheet's fiscal year
-    const latestSheet = [...sheets].sort(
-      (a, b) => b.fiscal_year - a.fiscal_year
-    )[0];
-    createAnalysis.mutate({
-      fiscalYear: latestSheet.fiscal_year,
-      balanceSheetId: latestSheet.id,
-    });
+    const onSuccess = (data: { analysisId: string }) => {
+      router.push(`/analyse/${data.analysisId}`);
+    };
+
+    if (hasBilans && sheets) {
+      const latestSheet = [...sheets].sort(
+        (a, b) => b.fiscal_year - a.fiscal_year
+      )[0];
+      createAnalysis.mutate(
+        { fiscalYear: latestSheet.fiscal_year, balanceSheetId: latestSheet.id },
+        { onSuccess }
+      );
+    } else {
+      const currentYear = new Date().getFullYear();
+      createAnalysis.mutate(
+        { fiscalYear: currentYear },
+        { onSuccess }
+      );
+    }
   };
 
   // ---- Loading ----
@@ -149,22 +159,31 @@ export function AnalyseMainPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Analyse financiere"
-          description="Import et analyse de votre bilan comptable"
+          title="Analyse financière"
+          description="Analysez la santé financière de votre agence"
           actions={
-            <Button onClick={() => router.push('/analyse/import')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Importer un bilan
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => router.push('/analyse/import')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Importer un bilan
+              </Button>
+              <Button
+                onClick={handleCreateAnalysis}
+                disabled={createAnalysis.isPending}
+              >
+                <Activity className="mr-2 h-4 w-4" />
+                {createAnalysis.isPending ? 'Lancement...' : 'Analyser mes données NXT'}
+              </Button>
+            </div>
           }
         />
         <EmptyState
           icon={BarChart3}
-          title="Importez votre premier bilan"
-          description="Importez votre premier bilan comptable pour obtenir une analyse financiere complete de votre agence."
+          title="Lancez votre première analyse"
+          description="Analysez vos recettes, dépenses et collaborateurs pour obtenir votre score de santé financière. Vous pouvez aussi importer un bilan comptable pour une analyse complète."
           action={{
-            label: 'Importer un bilan',
-            onClick: () => router.push('/analyse/import'),
+            label: 'Analyser mes données NXT',
+            onClick: handleCreateAnalysis,
           }}
         />
       </div>
@@ -188,7 +207,7 @@ export function AnalyseMainPage() {
             </Button>
             <Button
               onClick={handleCreateAnalysis}
-              disabled={!canCreateAnalysis || createAnalysis.isPending}
+              disabled={createAnalysis.isPending}
             >
               <Activity className="mr-2 h-4 w-4" />
               {createAnalysis.isPending

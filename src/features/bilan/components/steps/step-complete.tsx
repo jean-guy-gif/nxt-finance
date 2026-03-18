@@ -1,8 +1,10 @@
 'use client';
 
-import { CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { CheckCircle2, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBalanceSheet } from '../../hooks/use-balance-sheets';
+import { useCreateAnalysis } from '@/features/analyse/hooks/use-analyses';
 import { BALANCE_SHEET_SOURCE_TYPE_LABELS } from '@/types/enums';
 
 interface StepCompleteProps {
@@ -11,9 +13,26 @@ interface StepCompleteProps {
 }
 
 export function StepComplete({ balanceSheetId, onReset }: StepCompleteProps) {
+  const router = useRouter();
   const { data: balanceSheet } = useBalanceSheet(balanceSheetId);
+  const createAnalysis = useCreateAnalysis();
 
   const itemCount = balanceSheet?.items?.length ?? 0;
+
+  function handleLaunchAnalysis() {
+    if (!balanceSheet) return;
+    createAnalysis.mutate(
+      {
+        fiscalYear: balanceSheet.fiscal_year,
+        balanceSheetId: balanceSheet.id,
+      },
+      {
+        onSuccess: (data) => {
+          router.push(`/analyse/${data.analysisId}`);
+        },
+      }
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
@@ -54,8 +73,13 @@ export function StepComplete({ balanceSheetId, onReset }: StepCompleteProps) {
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
-        <Button disabled className="min-w-[200px]">
-          Lancer l&apos;analyse financière — Disponible en V3.3
+        <Button
+          onClick={handleLaunchAnalysis}
+          disabled={createAnalysis.isPending}
+          className="min-w-[200px]"
+        >
+          <BarChart3 className="mr-2 h-4 w-4" />
+          {createAnalysis.isPending ? 'Lancement...' : 'Lancer l\'analyse financière'}
         </Button>
         <Button variant="outline" onClick={onReset}>
           Importer un autre bilan
