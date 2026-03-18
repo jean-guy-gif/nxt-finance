@@ -1,58 +1,64 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const dynamic = 'force-dynamic';
 
-  // Diagnostic: which keys are available?
+export async function GET() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+
   const keysStatus = {
-    NEXT_PUBLIC_SUPABASE_URL: url ? `${url.slice(0, 30)}...` : 'MISSING',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey ? `${anonKey.slice(0, 10)}...` : 'MISSING',
-    SUPABASE_SERVICE_ROLE_KEY: serviceKey ? `${serviceKey.slice(0, 10)}...` : 'MISSING',
+    url: url ? url.slice(0, 40) + '...' : 'MISSING',
+    anonKey: anonKey ? anonKey.slice(0, 10) + '...' : 'MISSING',
+    serviceKey: serviceKey ? serviceKey.slice(0, 10) + '...' : 'MISSING',
   };
 
-  // Use service role key if available (bypasses RLS + auth for Edge Functions)
-  const key = serviceKey ?? anonKey;
-  if (!url || !key) {
-    return NextResponse.json({
-      success: false,
-      error: 'Missing Supabase credentials',
-      keysStatus,
-    });
+  if (!url || !anonKey) {
+    return NextResponse.json({ success: false, error: 'Missing env vars', keysStatus });
   }
 
-  const supabase = createClient(url, key);
+  // Use service role key to bypass auth on Edge Function
+  const key = serviceKey || anonKey;
 
-  // Test 1: Can we invoke the Edge Function at all?
+  // Direct fetch to the Edge Function (no supabase client needed)
+  const fnUrl = `${url}/functions/v1/llm-gateway`;
+
   try {
-    const { data, error } = await supabase.functions.invoke('llm-gateway', {
-      body: {
-        systemPrompt: 'Tu es un assistant de test. Réponds en une phrase.',
-        userPrompt: 'Dis "Le LLM fonctionne correctement." et rien d\'autre.',
-        maxTokens: 50,
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+        'apikey': anonKey,
+      },
+      body: JSON.stringify({
+        systemPrompt: 'Tu es un assistant de test.',
+        userPrompt: 'Réponds exactement : "LLM OK"',
+        maxTokens: 20,
         temperature: 0,
         model: 'anthropic/claude-sonnet-4-20250514',
-      },
+      }),
     });
 
+    const status = res.status;
+    const text = await res.text();
+
+    let parsed = null;
+    try { parsed = JSON.parse(text); } catch { /* not JSON */ }
+
     return NextResponse.json({
-      success: !error,
-      data,
-      error: error ? { message: error.message, name: error.name, context: error.context } : null,
+      success: status === 200,
+      httpStatus: status,
+      response: parsed ?? text,
+      fnUrl,
       keysStatus,
-      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     return NextResponse.json({
       success: false,
-      error: {
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack?.split('\n').slice(0, 5) : undefined,
-      },
+      error: err instanceof Error ? err.message : String(err),
+      fnUrl,
       keysStatus,
-      timestamp: new Date().toISOString(),
     });
   }
 }
