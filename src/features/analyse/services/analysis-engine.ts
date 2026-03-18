@@ -117,32 +117,33 @@ export async function createAnalysis(
     relatedId: analysisId,
   });
 
-  // d) Run computation — await to ensure ratios + score + status='ready' complete
-  //    before returning to the caller (so the UI navigates to a ready analysis)
+  // d) Run core computation (ratios + score + status='ready')
+  //    Then fire-and-forget temporal + LLM insights
   try {
-    await triggerAnalysisComputation(
-      supabase,
-      job.id,
-      analysisId,
-      agencyId,
-      fiscalYear,
-      balanceSheetId,
-      level
+    await computeAnalysisCore(
+      supabase, job.id, analysisId, agencyId, fiscalYear, balanceSheetId, level
     );
   } catch (err) {
-    console.error('[analysis-engine] Computation failed:', err);
-    // Analysis is still created, may be in 'computing' or 'ready' depending on where it failed
+    console.error('[analysis-engine] Core computation failed:', err);
   }
 
-  // e) Return
+  // e) Fire-and-forget: temporal data + LLM insights
+  //    These run AFTER the function returns, so the UI can navigate immediately
+  computeAnalysisEnrichments(
+    supabase, job.id, analysisId, agencyId, fiscalYear
+  ).catch((err) => {
+    console.error('[analysis-engine] Enrichments failed:', err);
+  });
+
+  // f) Return immediately — analysis is 'ready' with ratios
   return { analysisId, jobId: job.id };
 }
 
 // ============================================
-// 2. triggerAnalysisComputation
+// 2. computeAnalysisCore — awaited, must complete before UI navigates
 // ============================================
 
-async function triggerAnalysisComputation(
+async function computeAnalysisCore(
   supabase: SupabaseClient,
   jobId: string,
   analysisId: string,
@@ -152,15 +153,13 @@ async function triggerAnalysisComputation(
   level: AnalysisLevel
 ): Promise<void> {
   try {
-    // a) Start job
     await startJob(supabase, jobId);
-    // b) Progress 10%
     await updateJobProgress(supabase, jobId, 10);
 
     const inputHash = buildInputHash(agencyId, fiscalYear, balanceSheetId);
     const now = new Date().toISOString();
 
-    // c) Compute bilan ratios (if balanceSheetId)
+    // Bilan ratios (if balanceSheetId)
     let bilanRatios: { key: string; value: number; formulaKey: string; source: 'bilan' }[] = [];
     let nMinus1Map = new Map<string, number>();
 
@@ -177,138 +176,61 @@ async function triggerAnalysisComputation(
       }
     }
 
-    // d) Progress 30%
     await updateJobProgress(supabase, jobId, 30);
 
-    // e) Compute NXT ratios
+    // NXT ratios
     const nxtRatios = await computeNxtRatios(supabase, agencyId, fiscalYear);
 
-    // f) Progress 50%
     await updateJobProgress(supabase, jobId, 50);
 
-    // g) Compute merged (cross-source) ratios if bilan exists
+    // Merged ratios
     const bilanMap = new Map(bilanRatios.map((r) => [r.key, r.value]));
     const nxtMap = new Map(nxtRatios.map((r) => [r.key, r.value]));
     const mergedRatios = bilanRatios.length > 0
       ? computeMergedRatios(bilanMap, nxtMap)
       : [];
 
-    // h) Merge all ratios, evaluate against benchmarks
+    // Merge all
     const allRawRatios = [
-      ...bilanRatios.map((r) => ({
-        key: r.key,
-        value: r.value,
-        formulaKey: r.formulaKey,
-        source: r.source as 'bilan' | 'nxt' | 'computed',
-      })),
-      ...nxtRatios.map((r) => ({
-        key: r.key,
-        value: r.value,
-        formulaKey: r.formulaKey,
-        source: r.source as 'bilan' | 'nxt' | 'computed',
-      })),
-      ...mergedRatios.map((r) => ({
-        key: r.key,
-        value: r.value,
-        formulaKey: r.formulaKey,
-        source: r.source as 'bilan' | 'nxt' | 'computed',
-      })),
+      ...bilanRatios.map((r) => ({ key: r.key, value: r.value, formulaKey: r.formulaKey, source: r.source as 'bilan' | 'nxt' | 'computed' })),
+      ...nxtRatios.map((r) => ({ key: r.key, value: r.value, formulaKey: r.formulaKey, source: r.source as 'bilan' | 'nxt' | 'computed' })),
+      ...mergedRatios.map((r) => ({ key: r.key, value: r.value, formulaKey: r.formulaKey, source: r.source as 'bilan' | 'nxt' | 'computed' })),
     ];
 
     const ratioRecords = allRawRatios.map((r) => {
       const benchmark = getBenchmarkForRatio(r.key);
       const status = evaluateRatioStatus(r.key, r.value);
-
       return {
-        analysis_id: analysisId,
-        ratio_key: r.key,
-        value: r.value,
+        analysis_id: analysisId, ratio_key: r.key, value: r.value,
         value_n_minus_1: nMinus1Map.get(r.key) ?? null,
-        benchmark_min: benchmark?.healthy_min ?? null,
-        benchmark_max: benchmark?.healthy_max ?? null,
-        status,
-        source: r.source,
-        calculation_version: CALCULATION_VERSION,
-        computed_at: now,
-        input_hash: inputHash,
-        formula_key: r.formulaKey,
+        benchmark_min: benchmark?.healthy_min ?? null, benchmark_max: benchmark?.healthy_max ?? null,
+        status, source: r.source, calculation_version: CALCULATION_VERSION,
+        computed_at: now, input_hash: inputHash, formula_key: r.formulaKey,
       };
     });
 
-    // h) Persist ratios (delete existing first for idempotency)
-    await supabase
-      .from('financial_ratios')
-      .delete()
-      .eq('analysis_id', analysisId);
-
+    // Persist ratios
+    await supabase.from('financial_ratios').delete().eq('analysis_id', analysisId);
     if (ratioRecords.length > 0) {
-      const { error: ratioError } = await supabase
-        .from('financial_ratios')
-        .insert(ratioRecords);
-
-      if (ratioError) {
-        throw new Error(`Failed to insert ratios: ${ratioError.message}`);
-      }
+      const { error: ratioError } = await supabase.from('financial_ratios').insert(ratioRecords);
+      if (ratioError) throw new Error(`Failed to insert ratios: ${ratioError.message}`);
     }
 
-    // i) Progress 60%
     await updateJobProgress(supabase, jobId, 60);
 
-    // j) Compute health score + update status to 'ready' in ONE call
+    // Health score + status='ready' in ONE call
     const { score } = computeHealthScore(
       allRawRatios.map((r) => ({ key: r.key, value: r.value }))
     );
 
-    await supabase
-      .from('financial_analyses')
-      .update({
-        health_score: score,
-        status: 'ready',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', analysisId);
+    await supabase.from('financial_analyses').update({
+      health_score: score, status: 'ready', updated_at: new Date().toISOString(),
+    }).eq('id', analysisId);
 
-    // l) Progress 70%
     await updateJobProgress(supabase, jobId, 70);
-
-    // m) Compute temporal analysis (non-blocking — graceful degradation)
-    let temporalData = null;
-    try {
-      temporalData = await computeTemporalAnalysis(supabase, agencyId, fiscalYear);
-      // Persist temporal data separately (column may not exist yet)
-      await supabase
-        .from('financial_analyses')
-        .update({
-          temporal_data: temporalData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', analysisId);
-    } catch (err) {
-      console.warn('[analysis-engine] Temporal analysis failed, skipping:', err);
-    }
-
-    // n) Generate LLM insights (non-blocking — analysis stays ready even if LLM fails)
-    try {
-      await generateInsights(
-        supabase,
-        analysisId,
-        ratioRecords,
-        score,
-        agencyId,
-        fiscalYear,
-        temporalData
-      );
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.error('[analysis-engine] LLM insights generation failed:', errMsg);
-      // Insights are non-blocking — analysis is already 'ready' with ratios
-    }
-
-    // o) Complete job
-    await completeJob(supabase, jobId);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[analysis-engine] Computation failed for analysis ${analysisId}:`, error);
+    console.error(`[analysis-engine] Core computation failed for ${analysisId}:`, error);
 
     // Fail the job
     await failJob(supabase, jobId, errorMessage).catch(() => {
@@ -318,7 +240,66 @@ async function triggerAnalysisComputation(
 }
 
 // ============================================
-// 3. generateInsights — Phase C refonte dirigeant
+// 3. computeAnalysisEnrichments — fire-and-forget (temporal + LLM)
+// ============================================
+
+async function computeAnalysisEnrichments(
+  supabase: SupabaseClient,
+  jobId: string,
+  analysisId: string,
+  agencyId: string,
+  fiscalYear: number
+): Promise<void> {
+  // Fetch the computed ratios + score for LLM context
+  const { data: ratioRows } = await supabase
+    .from('financial_ratios')
+    .select('ratio_key, value, value_n_minus_1, status, source, benchmark_min, benchmark_max')
+    .eq('analysis_id', analysisId);
+
+  const { data: analysisRow } = await supabase
+    .from('financial_analyses')
+    .select('health_score')
+    .eq('id', analysisId)
+    .single();
+
+  const ratioRecords: RatioRecord[] = (ratioRows ?? []).map((r) => ({
+    ratio_key: r.ratio_key,
+    value: r.value,
+    value_n_minus_1: r.value_n_minus_1,
+    status: r.status,
+    source: r.source,
+    benchmark_min: r.benchmark_min,
+    benchmark_max: r.benchmark_max,
+  }));
+
+  const score = analysisRow?.health_score ?? 50;
+
+  // a) Temporal analysis
+  let temporalData = null;
+  try {
+    temporalData = await computeTemporalAnalysis(supabase, agencyId, fiscalYear);
+    await supabase.from('financial_analyses').update({
+      temporal_data: temporalData, updated_at: new Date().toISOString(),
+    }).eq('id', analysisId);
+  } catch (err) {
+    console.warn('[analysis-engine] Temporal analysis failed:', err);
+  }
+
+  await updateJobProgress(supabase, jobId, 85).catch(() => {});
+
+  // b) LLM insights
+  try {
+    await generateInsights(supabase, analysisId, ratioRecords, score, agencyId, fiscalYear, temporalData);
+  } catch (err) {
+    console.error('[analysis-engine] LLM insights failed:', err instanceof Error ? err.message : err);
+  }
+
+  // c) Complete job
+  await completeJob(supabase, jobId).catch(() => {});
+}
+
+// ============================================
+// 4. generateInsights — Phase C refonte dirigeant
 // ============================================
 
 interface RatioRecord {
