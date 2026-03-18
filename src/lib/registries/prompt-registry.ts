@@ -1,8 +1,7 @@
 // ============================================
-// NXT Finance V3 — Prompt registry versionné
+// NXT Finance V3.5 — Prompt registry versionné
 // ============================================
-// Chaque prompt est versionné et typé.
-// Les variables sont injectées par le llm-gateway.
+// Phase C : prompts calibrés dirigeant agence immobilière
 // Le LLM ne reçoit JAMAIS de données brutes à calculer.
 // ============================================
 
@@ -18,30 +17,167 @@ export interface PromptTemplate {
   expectedVariables: string[];
 }
 
+const SYSTEM_IMMOBILIER = `Tu es un analyste financier spécialisé dans le secteur immobilier (transaction, gestion locative, location).
+Tu t'adresses à un dirigeant d'agence immobilière.
+Tu expliques les chiffres en langage business, pas en langage comptable.
+Tu es direct, précis et orienté action.
+Règles de rédaction :
+- Phrases courtes et actives
+- Toujours quantifier (montants, pourcentages, mois)
+- Jamais de jargon comptable brut sans explication (pas de "BFR", "ratio de liquidité" sans contexte)
+- Pas de formulations creuses ("il convient de", "il serait souhaitable de")
+- Ton professionnel mais accessible, comme un conseiller financier qui parle à un patron de PME`;
+
 export const PROMPT_TEMPLATES: PromptTemplate[] = [
+  // ============================================
+  // Q1 — "Où en suis-je ?" — Synthèse dirigeant
+  // ============================================
+  {
+    type: 'director_summary',
+    version: 'v2.0',
+    systemPrompt: SYSTEM_IMMOBILIER,
+    userPromptTemplate: `Situation de l'agence — Exercice {fiscal_year} :
+
+Score de santé financière : {health_score}/100 ({health_label})
+CA total HT : {ca_total_ht}
+Marge opérationnelle : {marge_operationnelle}
+Tendance CA 3 mois : {trend_ca}
+Projection CA fin d'année : {projection_ca}
+Taux de récurrence (gestion + location) : {taux_recurrence}
+Nombre de collaborateurs actifs : {nb_collaborateurs}
+Point fort principal : {top_strength}
+Point faible principal : {top_weakness}
+
+Rédige une synthèse de 3-4 phrases en langage dirigeant.
+Commence par le rythme d'activité (CA mensuel moyen, tendance).
+Mentionne le socle récurrent s'il est significatif.
+Termine par la projection ou le point d'attention principal.
+Ne répète pas les chiffres bruts — intègre-les dans des phrases naturelles.`,
+    maxTokens: 400,
+    temperature: 0.3,
+    expectedVariables: [
+      'fiscal_year', 'health_score', 'health_label',
+      'ca_total_ht', 'marge_operationnelle', 'trend_ca',
+      'projection_ca', 'taux_recurrence', 'nb_collaborateurs',
+      'top_strength', 'top_weakness',
+    ],
+  },
+
+  // ============================================
+  // Q2 — "Qu'est-ce qui va bien ?" — Forces
+  // ============================================
   {
     type: 'financial_insight',
-    version: 'v1.0',
-    systemPrompt: `Tu es un analyste financier expert en agences immobilières françaises.
-Tu rédiges des analyses claires et actionnables pour des dirigeants non-comptables.
-Tu ne calcules jamais de chiffres. Tu reçois des indicateurs déjà calculés et tu les expliques.
-Tu rédiges en français. Tu es direct, factuel et orienté action.`,
-    userPromptTemplate: `Voici les indicateurs financiers calculés pour l'agence :
+    version: 'v2.0-strength',
+    systemPrompt: SYSTEM_IMMOBILIER,
+    userPromptTemplate: `Points forts de l'agence — Exercice {fiscal_year} :
 
-{ratios_summary}
+{ratios_detail}
 
-Contexte :
-- Exercice : {fiscal_year}
-- Niveau d'analyse : {analysis_level}
-- Données comparatives N-1 disponibles : {has_comparison}
+Pour chaque indicateur ci-dessus, rédige :
+- Un titre court (max 8 mots, orienté business)
+- 2-3 phrases qui expliquent POURQUOI c'est bien et CE QUE ÇA SIGNIFIE pour le business
+- Compare au benchmark sectoriel quand il est fourni
 
-Génère un insight de type "{insight_type}" pour la catégorie "{category}".
-Rédige un titre court (max 10 mots) et un paragraphe d'analyse (3-5 phrases).
-Si c'est une recommandation, propose une action concrète.`,
+Format de sortie (respecte exactement) :
+**[Titre]** — [Explication en 2-3 phrases]
+
+Sépare chaque point par une ligne vide.
+Ne commence pas par "Votre" à chaque fois — varie les formulations.`,
+    maxTokens: 600,
+    temperature: 0.3,
+    expectedVariables: ['fiscal_year', 'ratios_detail'],
+  },
+
+  // ============================================
+  // Q3 — "Qu'est-ce qui ne va pas ?" — Faiblesses
+  // ============================================
+  {
+    type: 'financial_insight',
+    version: 'v2.0-weakness',
+    systemPrompt: SYSTEM_IMMOBILIER,
+    userPromptTemplate: `Points de vigilance de l'agence — Exercice {fiscal_year} :
+
+{ratios_detail}
+
+Pour chaque indicateur ci-dessus, rédige :
+- Un titre court (max 8 mots, orienté risque business)
+- 2-3 phrases qui quantifient l'impact et expliquent le risque concret
+- Sois direct, pas alarmiste mais pas édulcoré
+
+Format de sortie (respecte exactement) :
+**[Titre]** — [Explication en 2-3 phrases avec impact quantifié]
+
+Sépare chaque point par une ligne vide.`,
+    maxTokens: 600,
+    temperature: 0.3,
+    expectedVariables: ['fiscal_year', 'ratios_detail'],
+  },
+
+  // ============================================
+  // Q4 — "Qu'est-ce que je dois surveiller ?" — Anomalies
+  // ============================================
+  {
+    type: 'financial_insight',
+    version: 'v2.0-anomaly',
+    systemPrompt: SYSTEM_IMMOBILIER,
+    userPromptTemplate: `Signaux à surveiller — Exercice {fiscal_year} :
+
+{signals_detail}
+
+Pour chaque signal, rédige :
+- Un titre court orienté surveillance (max 8 mots)
+- 2-3 phrases qui expliquent la tendance et ce qui se passe si elle continue
+- Projette l'impact à 3-6 mois si possible
+
+Format de sortie (respecte exactement) :
+**[Titre]** — [Explication avec projection]
+
+Sépare chaque point par une ligne vide.
+Si aucun signal n'est fourni, écris : "Aucun signal d'alerte détecté sur la période."`,
     maxTokens: 500,
     temperature: 0.3,
-    expectedVariables: ['ratios_summary', 'fiscal_year', 'analysis_level', 'has_comparison', 'insight_type', 'category'],
+    expectedVariables: ['fiscal_year', 'signals_detail'],
   },
+
+  // ============================================
+  // Q5 — "Que faire maintenant ?" — Recommandations
+  // ============================================
+  {
+    type: 'financial_insight',
+    version: 'v2.0-recommendation',
+    systemPrompt: SYSTEM_IMMOBILIER,
+    userPromptTemplate: `Faiblesses et anomalies identifiées — Exercice {fiscal_year} :
+
+{issues_detail}
+
+Modules NXT Finance disponibles pour agir :
+- Pilotage rentabilité (suivi collaborateurs, marge par activité)
+- Dépenses par catégorie (charges fixes, variables)
+- Recettes et encaissements (suivi CA, délais)
+- Reversements collaborateurs (parts, commissions)
+- Périodes comptables (TVA, pièces justificatives)
+
+Rédige 2-3 recommandations d'action concrètes.
+Pour chaque recommandation :
+- Une action précise en une phrase
+- Une justification chiffrée en une phrase
+- Le module NXT à consulter (format : → [Nom du module])
+
+Format de sortie (respecte exactement) :
+**[Action]**
+[Justification chiffrée]
+→ [Module NXT]
+
+Sépare chaque recommandation par une ligne vide.`,
+    maxTokens: 500,
+    temperature: 0.3,
+    expectedVariables: ['fiscal_year', 'issues_detail'],
+  },
+
+  // ============================================
+  // Autres prompts existants (inchangés)
+  // ============================================
   {
     type: 'bp_narrative',
     version: 'v1.0',
@@ -109,24 +245,6 @@ Sois professionnel, mets en valeur les points forts, et contextualise les chiffr
     maxTokens: 400,
     temperature: 0.4,
     expectedVariables: ['slide_type', 'request_type', 'requested_amount', 'source_data_summary'],
-  },
-  {
-    type: 'director_summary',
-    version: 'v1.0',
-    systemPrompt: `Tu es un conseiller stratégique pour dirigeants d'agences immobilières.
-Tu synthétises la situation financière de manière claire et actionnable.
-Tu ne calcules jamais. Tous les indicateurs sont pré-calculés.
-Tu rédiges en français, 4-6 phrases maximum.`,
-    userPromptTemplate: `Synthèse financière de l'agence :
-
-{financial_summary}
-
-Rédige une synthèse dirigeant de 4-6 phrases.
-Commence par le point principal (positif ou négatif).
-Termine par une recommandation prioritaire.`,
-    maxTokens: 400,
-    temperature: 0.3,
-    expectedVariables: ['financial_summary'],
   },
 ];
 

@@ -371,6 +371,39 @@ export function AnalysisDetailPage({ id }: Props) {
 // Tab: Synthese
 // ============================================
 
+function InsightPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-4 justify-center text-muted-foreground text-sm">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function InsightBlock({
+  insight,
+  icon: Icon,
+  iconColor,
+  borderColor,
+}: {
+  insight: FinancialInsight;
+  icon: typeof CheckCircle;
+  iconColor: string;
+  borderColor: string;
+}) {
+  return (
+    <div className={cn('rounded-lg border-2 p-4 space-y-2', borderColor)}>
+      <div className="flex items-center gap-2">
+        <Icon className={cn('h-4 w-4 shrink-0', iconColor)} />
+        <span className="text-sm font-semibold">{insight.title}</span>
+      </div>
+      <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+        {insight.content}
+      </div>
+    </div>
+  );
+}
+
 function TabSynthese({
   healthScore,
   insights,
@@ -380,9 +413,8 @@ function TabSynthese({
   insights: FinancialInsight[];
   ratios: FinancialRatio[];
 }) {
-  // Compute category scores from ratios (simplified: average status per category)
+  // Compute category scores from ratios
   const categoryScores = useMemo(() => {
-    // Map ratio_key to category
     const categoryMap: Record<string, string> = {
       marge_nette: 'rentabilite',
       marge_brute: 'rentabilite',
@@ -418,13 +450,18 @@ function TabSynthese({
     });
   }, [ratios]);
 
-  // Group insights by director_summary (content-based)
+  // Classify insights by the new 5-question structure
   const directorSummary = insights.find((i) => i.category === 'director_summary');
-  const regularInsights = insights.filter((i) => i.category !== 'director_summary');
+  const strengths = insights.filter((i) => i.insight_type === 'strength');
+  const weaknesses = insights.filter((i) => i.insight_type === 'weakness');
+  const anomalies = insights.filter((i) => i.insight_type === 'anomaly');
+  const recommendations = insights.filter((i) => i.insight_type === 'recommendation' && i.category !== 'director_summary');
+
+  const hasAnyInsight = insights.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Health score card */}
+      {/* Health score + category scores */}
       <SectionCard title="Score de santé financière">
         <div className="flex flex-col items-center gap-3 py-4">
           <div className={cn('text-5xl font-bold tabular-nums', scoreColor(healthScore))}>
@@ -447,15 +484,12 @@ function TabSynthese({
         </div>
       </SectionCard>
 
-      {/* Category scores */}
+      {/* Category scores grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {categoryScores.map((cat) => {
           const Icon = cat.icon;
           return (
-            <div
-              key={cat.key}
-              className="rounded-lg border p-4 space-y-2"
-            >
+            <div key={cat.key} className="rounded-lg border p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Icon className="h-4 w-4" />
                 <span className="font-medium">{cat.label}</span>
@@ -472,47 +506,93 @@ function TabSynthese({
         })}
       </div>
 
-      {/* Director summary */}
-      {directorSummary && (
-        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-5 space-y-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">
-            Synthèse dirigeant
-          </h3>
-          <p className="text-sm leading-relaxed">{directorSummary.content}</p>
-        </div>
-      )}
+      {/* Q1 — Synthèse dirigeant */}
+      <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-5 space-y-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">
+          Où en êtes-vous ?
+        </h3>
+        {directorSummary ? (
+          <p className="text-sm leading-relaxed whitespace-pre-line">{directorSummary.content}</p>
+        ) : (
+          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+        )}
+      </div>
 
-      {/* LLM Insights */}
-      <SectionCard title="Insights">
-        {regularInsights.length === 0 ? (
-          <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Génération des insights en cours...</span>
+      {/* Q2 — Forces */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-emerald-600" />
+          Ce qui va bien
+        </h3>
+        {!hasAnyInsight ? (
+          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+        ) : strengths.length > 0 ? (
+          <div className="space-y-3">
+            {strengths.map((s) => (
+              <InsightBlock key={s.id} insight={s} icon={CheckCircle} iconColor="text-emerald-600" borderColor="border-emerald-200" />
+            ))}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {regularInsights.map((insight) => {
-              const config = INSIGHT_CONFIG[insight.insight_type];
-              const Icon = config.icon;
-              return (
-                <div
-                  key={insight.id}
-                  className={cn('rounded-lg border-2 p-4 space-y-2', config.border)}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn('h-4 w-4 shrink-0', config.iconColor)} />
-                    <span className="text-sm font-semibold">{insight.title}</span>
-                    <Badge variant="outline" className="ml-auto text-[10px]">
-                      {INSIGHT_TYPE_LABELS[insight.insight_type]}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{insight.content}</p>
-                </div>
-              );
-            })}
-          </div>
+          <p className="text-sm text-muted-foreground py-2">Aucun point fort majeur identifié.</p>
         )}
-      </SectionCard>
+      </div>
+
+      {/* Q3 — Faiblesses */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          Ce qui ne va pas
+        </h3>
+        {!hasAnyInsight ? (
+          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+        ) : weaknesses.length > 0 ? (
+          <div className="space-y-3">
+            {weaknesses.map((w) => (
+              <InsightBlock key={w.id} insight={w} icon={AlertTriangle} iconColor="text-red-600" borderColor="border-red-200" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">Aucun point de faiblesse critique.</p>
+        )}
+      </div>
+
+      {/* Q4 — Surveillance */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <AlertOctagon className="h-4 w-4 text-amber-600" />
+          À surveiller
+        </h3>
+        {!hasAnyInsight ? (
+          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+        ) : anomalies.length > 0 ? (
+          <div className="space-y-3">
+            {anomalies.map((a) => (
+              <InsightBlock key={a.id} insight={a} icon={AlertOctagon} iconColor="text-amber-600" borderColor="border-amber-200" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">Aucun signal de surveillance.</p>
+        )}
+      </div>
+
+      {/* Q5 — Recommandations */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-blue-600" />
+          Que faire maintenant ?
+        </h3>
+        {!hasAnyInsight ? (
+          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+        ) : recommendations.length > 0 ? (
+          <div className="space-y-3">
+            {recommendations.map((r) => (
+              <InsightBlock key={r.id} insight={r} icon={Lightbulb} iconColor="text-blue-600" borderColor="border-blue-200" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">Aucune recommandation prioritaire.</p>
+        )}
+      </div>
     </div>
   );
 }

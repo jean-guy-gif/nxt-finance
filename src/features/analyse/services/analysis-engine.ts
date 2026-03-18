@@ -4,7 +4,7 @@
 // ============================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { FinancialAnalysis, FinancialRatio } from '@/types/models';
+import type { FinancialAnalysis, FinancialRatio, TemporalAnalysis } from '@/types/models';
 import type { AnalysisLevel } from '@/types/enums';
 import {
   computeBilanRatios,
@@ -13,6 +13,7 @@ import {
   computeMergedRatios,
   computeHealthScore,
   computeTemporalAnalysis,
+  getHealthLabel,
 } from './ratio-engine';
 import {
   createJob,
@@ -281,7 +282,8 @@ async function triggerAnalysisComputation(
       ratioRecords,
       score,
       agencyId,
-      fiscalYear
+      fiscalYear,
+      temporalData
     );
 
     // n) Complete job
@@ -298,7 +300,7 @@ async function triggerAnalysisComputation(
 }
 
 // ============================================
-// 3. generateInsights
+// 3. generateInsights — Phase C refonte dirigeant
 // ============================================
 
 interface RatioRecord {
@@ -307,6 +309,42 @@ interface RatioRecord {
   value_n_minus_1: number | null;
   status: string;
   source: string;
+  benchmark_min?: number | null;
+  benchmark_max?: number | null;
+}
+
+// French labels for ratio keys (subset used in prompts)
+const RATIO_LABELS: Record<string, string> = {
+  marge_nette: 'Marge nette',
+  marge_brute: 'Marge brute',
+  marge_operationnelle_nxt: 'Marge opérationnelle',
+  taux_endettement: "Taux d'endettement",
+  ratio_liquidite: 'Ratio de liquidité',
+  ratio_charges_ca: 'Ratio charges / CA',
+  ratio_masse_salariale: 'Ratio masse salariale',
+  ca_par_collaborateur: 'CA par collaborateur',
+  taux_recurrence: 'Taux de récurrence',
+  concentration_ca_top3: 'Concentration CA top 3',
+  delai_encaissement_moyen: 'Délai encaissement moyen',
+  ratio_charges_fixes_ca: 'Ratio charges fixes / CA',
+  runway_tresorerie: 'Runway trésorerie',
+  point_mort_mensuel: 'Point mort mensuel',
+  coherence_ca: 'Cohérence CA bilan/NXT',
+  couverture_charges_reelles: 'Couverture charges réelles',
+};
+
+function formatRatioForPrompt(r: RatioRecord): string {
+  const label = RATIO_LABELS[r.ratio_key] ?? r.ratio_key;
+  const benchmark = r.benchmark_min != null && r.benchmark_max != null
+    ? ` (benchmark sectoriel : ${r.benchmark_min}–${r.benchmark_max})`
+    : '';
+  return `- ${label} : ${r.value} — statut : ${r.status}${benchmark}`;
+}
+
+function formatCurrencySimple(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.', ',')} M€`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)} k€`;
+  return `${v.toFixed(0)} €`;
 }
 
 async function generateInsights(
@@ -315,21 +353,14 @@ async function generateInsights(
   ratios: RatioRecord[],
   healthScore: number,
   agencyId: string,
-  fiscalYear: number
+  fiscalYear: number,
+  temporalData?: TemporalAnalysis | null
 ): Promise<void> {
   // Delete existing insights for idempotency
   await supabase
     .from('financial_insights')
     .delete()
     .eq('analysis_id', analysisId);
-
-  const hasComparison = ratios.some((r) => r.value_n_minus_1 !== null);
-
-  // Helper to format ratios for LLM prompt
-  const formatRatios = (subset: RatioRecord[]): string =>
-    subset
-      .map((r) => `${r.ratio_key}: ${r.value} (${r.status})`)
-      .join(', ');
 
   // Helper to insert insight
   const insertInsight = async (
@@ -353,18 +384,84 @@ async function generateInsights(
     });
   };
 
-  // a) Strength: top 3 healthy ratios
-  const healthyRatios = ratios.filter((r) => r.status === 'healthy').slice(0, 3);
+  // Pre-compute key variables for prompts
+  const ratioMap = new Map(ratios.map((r) => [r.ratio_key, r]));
+  const caHt = ratioMap.get('ca_total_ht')?.value ?? 0;
+  const margeOp = ratioMap.get('marge_operationnelle_nxt')?.value;
+  const tauxRec = ratioMap.get('taux_recurrence')?.value;
+  const trendCa = temporalData?.trends?.ca;
+  const projection = temporalData?.projection;
+  const healthLabel = getHealthLabel(healthScore).label;
+
+  // Sort ratios by status priority for top strengths/weaknesses
+  const healthyRatios = ratios
+    .filter((r) => r.status === 'healthy' && RATIO_LABELS[r.ratio_key])
+    .slice(0, 3);
+  const weakRatios = ratios
+    .filter((r) => (r.status === 'critical' || r.status === 'warning') && RATIO_LABELS[r.ratio_key])
+    .slice(0, 3);
+
+  // Fetch collaborator count
+  const { count: nbCollabs } = await supabase
+    .from('collaborators')
+    .select('id', { count: 'exact', head: true })
+    .eq('agency_id', agencyId)
+    .eq('status', 'active');
+
+  // =============================================
+  // Q1 — Director summary
+  // =============================================
+  {
+    const topStrength = healthyRatios.length > 0
+      ? `${RATIO_LABELS[healthyRatios[0].ratio_key]} = ${healthyRatios[0].value}`
+      : 'aucun indicateur au vert';
+    const topWeakness = weakRatios.length > 0
+      ? `${RATIO_LABELS[weakRatios[0].ratio_key]} = ${weakRatios[0].value}`
+      : 'aucun point de vigilance majeur';
+
+    const response = await generateContent(supabase, {
+      type: 'director_summary',
+      promptVersion: 'v2.0',
+      variables: {
+        fiscal_year: String(fiscalYear),
+        health_score: String(healthScore),
+        health_label: healthLabel,
+        ca_total_ht: formatCurrencySimple(caHt),
+        marge_operationnelle: margeOp != null ? `${margeOp.toFixed(1)}%` : 'non calculée',
+        trend_ca: trendCa ? `${trendCa.direction} (${trendCa.variation_pct > 0 ? '+' : ''}${trendCa.variation_pct.toFixed(1)}%)` : 'données insuffisantes',
+        projection_ca: projection ? formatCurrencySimple(projection.ca_projected) : 'non disponible',
+        taux_recurrence: tauxRec != null ? `${tauxRec.toFixed(1)}%` : 'non calculé',
+        nb_collaborateurs: String(nbCollabs ?? 0),
+        top_strength: topStrength,
+        top_weakness: topWeakness,
+      },
+      agencyId,
+    });
+
+    if (response) {
+      await insertInsight(
+        'recommendation',
+        'director_summary',
+        'Synthèse dirigeant',
+        response.content,
+        ratios.map((r) => r.ratio_key),
+        'info',
+        response.generationId
+      );
+    }
+  }
+
+  // =============================================
+  // Q2 — Strengths
+  // =============================================
   if (healthyRatios.length > 0) {
+    const ratiosDetail = healthyRatios.map(formatRatioForPrompt).join('\n');
     const response = await generateContent(supabase, {
       type: 'financial_insight',
+      promptVersion: 'v2.0-strength',
       variables: {
-        ratios_summary: formatRatios(healthyRatios),
         fiscal_year: String(fiscalYear),
-        analysis_level: 'complete',
-        has_comparison: String(hasComparison),
-        insight_type: 'strength',
-        category: 'rentabilité',
+        ratios_detail: ratiosDetail,
       },
       agencyId,
     });
@@ -372,8 +469,8 @@ async function generateInsights(
     if (response) {
       await insertInsight(
         'strength',
-        'rentabilité',
-        'Points forts identifiés',
+        'performance',
+        'Points forts',
         response.content,
         healthyRatios.map((r) => r.ratio_key),
         'info',
@@ -382,21 +479,17 @@ async function generateInsights(
     }
   }
 
-  // b) Weakness: top 3 critical/warning ratios
-  const weakRatios = ratios
-    .filter((r) => r.status === 'critical' || r.status === 'warning')
-    .slice(0, 3);
-
+  // =============================================
+  // Q3 — Weaknesses
+  // =============================================
   if (weakRatios.length > 0) {
+    const ratiosDetail = weakRatios.map(formatRatioForPrompt).join('\n');
     const response = await generateContent(supabase, {
       type: 'financial_insight',
+      promptVersion: 'v2.0-weakness',
       variables: {
-        ratios_summary: formatRatios(weakRatios),
         fiscal_year: String(fiscalYear),
-        analysis_level: 'complete',
-        has_comparison: String(hasComparison),
-        insight_type: 'weakness',
-        category: 'structure',
+        ratios_detail: ratiosDetail,
       },
       agencyId,
     });
@@ -404,7 +497,7 @@ async function generateInsights(
     if (response) {
       await insertInsight(
         'weakness',
-        'structure',
+        'risques',
         'Points de vigilance',
         response.content,
         weakRatios.map((r) => r.ratio_key),
@@ -414,31 +507,47 @@ async function generateInsights(
     }
   }
 
-  // c) Anomaly: ratios with >20% change from N-1
-  const anomalyRatios = ratios.filter((r) => {
-    if (r.value_n_minus_1 === null || r.value_n_minus_1 === 0) return false;
-    return Math.abs(r.value - r.value_n_minus_1) / Math.abs(r.value_n_minus_1) > 0.2;
-  });
+  // =============================================
+  // Q4 — Anomalies / Surveillance
+  // =============================================
+  {
+    const signals: string[] = [];
 
-  if (anomalyRatios.length > 0) {
+    // Tendances 3 mois en baisse
+    if (trendCa?.direction === 'down') {
+      signals.push(`- Tendance CA 3 mois : en baisse de ${Math.abs(trendCa.variation_pct).toFixed(1)}%`);
+    }
+    if (temporalData?.trends?.charges?.direction === 'up') {
+      signals.push(`- Tendance charges 3 mois : en hausse de ${temporalData.trends.charges.variation_pct.toFixed(1)}%`);
+    }
+    if (temporalData?.trends?.marge?.direction === 'down') {
+      signals.push(`- Tendance marge 3 mois : en baisse de ${Math.abs(temporalData.trends.marge.variation_pct).toFixed(1)}%`);
+    }
+
+    // Seasonal underperformance
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentSeason = temporalData?.seasonality?.find((s) => s.month === currentMonth);
+    if (currentSeason?.performance_vs_expected != null && currentSeason.performance_vs_expected < 90) {
+      signals.push(`- Sous-performance saisonnière : le mois en cours est à ${currentSeason.performance_vs_expected.toFixed(0)}% de la performance attendue`);
+    }
+
+    // Warning ratios (could become critical)
+    const warningOnly = ratios
+      .filter((r) => r.status === 'warning' && RATIO_LABELS[r.ratio_key])
+      .slice(0, 2);
+    for (const r of warningOnly) {
+      signals.push(`- ${RATIO_LABELS[r.ratio_key]} : ${r.value} — en zone de vigilance`);
+    }
+
+    const signalsDetail = signals.length > 0 ? signals.join('\n') : 'Aucun signal de surveillance détecté.';
+
     const response = await generateContent(supabase, {
       type: 'financial_insight',
+      promptVersion: 'v2.0-anomaly',
       variables: {
-        ratios_summary: anomalyRatios
-          .map(
-            (r) =>
-              `${r.ratio_key}: ${r.value} (N-1: ${r.value_n_minus_1}, variation: ${
-                r.value_n_minus_1 !== null && r.value_n_minus_1 !== 0
-                  ? Math.round(((r.value - r.value_n_minus_1) / Math.abs(r.value_n_minus_1)) * 100)
-                  : 'N/A'
-              }%)`
-          )
-          .join(', '),
         fiscal_year: String(fiscalYear),
-        analysis_level: 'complete',
-        has_comparison: 'true',
-        insight_type: 'anomaly',
-        category: 'évolution',
+        signals_detail: signalsDetail,
       },
       agencyId,
     });
@@ -446,31 +555,39 @@ async function generateInsights(
     if (response) {
       await insertInsight(
         'anomaly',
-        'évolution',
-        'Variations significatives détectées',
+        'surveillance',
+        'Points de surveillance',
         response.content,
-        anomalyRatios.map((r) => r.ratio_key),
-        'attention',
+        [...warningOnly.map((r) => r.ratio_key)],
+        signals.length > 0 ? 'attention' : 'info',
         response.generationId
       );
     }
   }
 
-  // d) Recommendation: based on weakest category
-  const weakestCategory = weakRatios.length > 0
-    ? weakRatios[0].ratio_key
-    : 'general';
-
+  // =============================================
+  // Q5 — Recommendations
+  // =============================================
   {
+    const issues: string[] = [];
+    for (const r of weakRatios) {
+      issues.push(formatRatioForPrompt(r));
+    }
+    if (trendCa?.direction === 'down') {
+      issues.push(`- Tendance CA en baisse : ${trendCa.variation_pct.toFixed(1)}% sur 3 mois`);
+    }
+    if (temporalData?.trends?.charges?.direction === 'up') {
+      issues.push(`- Charges en hausse : +${temporalData.trends.charges.variation_pct.toFixed(1)}% sur 3 mois`);
+    }
+
+    const issuesDetail = issues.length > 0 ? issues.join('\n') : 'Aucune faiblesse majeure identifiée.';
+
     const response = await generateContent(supabase, {
       type: 'financial_insight',
+      promptVersion: 'v2.0-recommendation',
       variables: {
-        ratios_summary: formatRatios(ratios.slice(0, 5)),
         fiscal_year: String(fiscalYear),
-        analysis_level: 'complete',
-        has_comparison: String(hasComparison),
-        insight_type: 'recommendation',
-        category: weakestCategory,
+        issues_detail: issuesDetail,
       },
       agencyId,
     });
@@ -478,41 +595,10 @@ async function generateInsights(
     if (response) {
       await insertInsight(
         'recommendation',
-        weakestCategory,
-        'Recommandations',
+        'actions',
+        'Actions prioritaires',
         response.content,
         weakRatios.map((r) => r.ratio_key),
-        'info',
-        response.generationId
-      );
-    }
-  }
-
-  // e) Director summary
-  {
-    const allSummary = ratios
-      .map((r) => `${r.ratio_key}: ${r.value} (${r.status})`)
-      .join(', ');
-
-    const response = await generateContent(supabase, {
-      type: 'director_summary',
-      variables: {
-        ratios_summary: allSummary,
-        health_score: String(healthScore),
-        fiscal_year: String(fiscalYear),
-        analysis_level: 'complete',
-        has_comparison: String(hasComparison),
-      },
-      agencyId,
-    });
-
-    if (response) {
-      await insertInsight(
-        'recommendation',
-        'synthèse',
-        'Synthèse dirigeant',
-        response.content,
-        ratios.map((r) => r.ratio_key),
         'info',
         response.generationId
       );

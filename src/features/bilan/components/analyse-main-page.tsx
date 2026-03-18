@@ -11,7 +11,7 @@ import { LoadingState } from '@/components/shared/loading-state';
 import { ErrorState } from '@/components/shared/error-state';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useBalanceSheets } from '../hooks/use-balance-sheets';
-import { useAnalyses, useCreateAnalysis } from '@/features/analyse/hooks/use-analyses';
+import { useAnalyses, useCreateAnalysis, useInsights } from '@/features/analyse/hooks/use-analyses';
 import { getHealthLabel } from '@/features/analyse/services/ratio-engine/scoring';
 import {
   BALANCE_SHEET_STATUS_LABELS,
@@ -282,6 +282,11 @@ export function AnalyseMainPage() {
           );
         })()}
 
+      {/* ---- Director summary ---- */}
+      {latestAnalysis?.status === 'ready' && (
+        <DirectorSummaryBlock analysisId={latestAnalysis.id} />
+      )}
+
       {/* ---- Bilans section ---- */}
       <SectionCard
         title="Bilans importes"
@@ -424,5 +429,37 @@ export function AnalyseMainPage() {
         )}
       </SectionCard>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Director Summary sub-component
+// ---------------------------------------------------------------------------
+
+function DirectorSummaryBlock({ analysisId }: { analysisId: string }) {
+  const { data: insights } = useInsights(analysisId);
+  const directorSummary = insights?.find((i) => i.category === 'director_summary');
+
+  if (!directorSummary) {
+    return (
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="py-4 text-sm text-muted-foreground">
+          Synthèse dirigeant en cours de rédaction...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-2 border-primary/20 bg-primary/5">
+      <CardContent className="py-5 space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+          Synthèse dirigeant
+        </p>
+        <p className="text-sm leading-relaxed whitespace-pre-line">
+          {directorSummary.content}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
