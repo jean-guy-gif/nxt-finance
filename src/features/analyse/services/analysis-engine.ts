@@ -10,6 +10,7 @@ import {
   computeBilanRatios,
   computeBilanRatiosNMinus1,
   computeNxtRatios,
+  computeMergedRatios,
   computeHealthScore,
 } from './ratio-engine';
 import {
@@ -170,7 +171,14 @@ async function triggerAnalysisComputation(
     // f) Progress 50%
     await updateJobProgress(supabase, jobId, 50);
 
-    // g) Merge all ratios, evaluate against benchmarks
+    // g) Compute merged (cross-source) ratios if bilan exists
+    const bilanMap = new Map(bilanRatios.map((r) => [r.key, r.value]));
+    const nxtMap = new Map(nxtRatios.map((r) => [r.key, r.value]));
+    const mergedRatios = bilanRatios.length > 0
+      ? computeMergedRatios(bilanMap, nxtMap)
+      : [];
+
+    // h) Merge all ratios, evaluate against benchmarks
     const allRawRatios = [
       ...bilanRatios.map((r) => ({
         key: r.key,
@@ -179,6 +187,12 @@ async function triggerAnalysisComputation(
         source: r.source as 'bilan' | 'nxt' | 'computed',
       })),
       ...nxtRatios.map((r) => ({
+        key: r.key,
+        value: r.value,
+        formulaKey: r.formulaKey,
+        source: r.source as 'bilan' | 'nxt' | 'computed',
+      })),
+      ...mergedRatios.map((r) => ({
         key: r.key,
         value: r.value,
         formulaKey: r.formulaKey,

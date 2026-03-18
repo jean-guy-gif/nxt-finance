@@ -56,6 +56,27 @@ const RATIO_KEY_LABELS: Record<string, string> = {
   ca_par_collaborateur: 'CA par collaborateur',
   marge_operationnelle_nxt: 'Marge opérationnelle',
   couverture_charges: 'Couverture charges',
+  // Operational ratios
+  nb_transactions_total: 'Nombre de transactions',
+  nb_transactions_transaction: 'Transactions (vente)',
+  nb_transactions_gestion: 'Transactions (gestion)',
+  nb_transactions_location: 'Transactions (location)',
+  panier_moyen_global: 'Panier moyen global',
+  panier_moyen_transaction: 'Panier moyen (vente)',
+  panier_moyen_gestion: 'Panier moyen (gestion)',
+  panier_moyen_location: 'Panier moyen (location)',
+  taux_recurrence: 'Taux de récurrence',
+  concentration_ca_top3: 'Concentration CA top 3',
+  delai_encaissement_moyen: 'Délai encaissement moyen',
+  part_ca_transaction: 'Part CA transaction',
+  part_ca_gestion: 'Part CA gestion',
+  part_ca_location: 'Part CA location',
+  ratio_charges_fixes_ca: 'Ratio charges fixes / CA',
+  point_mort_mensuel: 'Point mort mensuel',
+  runway_tresorerie: 'Runway trésorerie',
+  // Merged ratios
+  coherence_ca: 'Cohérence CA bilan/NXT',
+  couverture_charges_reelles: 'Couverture charges réelles',
 };
 
 // Ratios where a *lower* value is better (for N-1 comparison coloring)
@@ -65,6 +86,10 @@ const LOWER_IS_BETTER_RATIOS = new Set([
   'ratio_masse_salariale',
   'bfr_jours',
   'charges_total_ttc',
+  'concentration_ca_top3',
+  'delai_encaissement_moyen',
+  'ratio_charges_fixes_ca',
+  'coherence_ca',
 ]);
 
 // ============================================
@@ -72,11 +97,13 @@ const LOWER_IS_BETTER_RATIOS = new Set([
 // ============================================
 
 const SCORE_CATEGORIES = [
-  { key: 'rentabilite', label: 'Rentabilité', weight: '30%', icon: TrendingUp },
-  { key: 'structure', label: 'Structure', weight: '25%', icon: Shield },
-  { key: 'liquidite', label: 'Liquidité', weight: '20%', icon: Droplets },
-  { key: 'productivite', label: 'Productivité', weight: '15%', icon: Users },
+  { key: 'rentabilite', label: 'Rentabilité', weight: '25%', icon: TrendingUp },
+  { key: 'structure', label: 'Structure', weight: '15%', icon: Shield },
+  { key: 'liquidite', label: 'Liquidité', weight: '15%', icon: Droplets },
+  { key: 'productivite', label: 'Productivité', weight: '10%', icon: Users },
   { key: 'charges', label: 'Charges', weight: '10%', icon: Receipt },
+  { key: 'dynamique_commerciale', label: 'Dynamique commerciale', weight: '15%', icon: TrendingUp },
+  { key: 'risques', label: 'Risques', weight: '10%', icon: Shield },
 ] as const;
 
 // Map insight types to visual config
@@ -91,10 +118,11 @@ const INSIGHT_CONFIG: Record<InsightType, { border: string; icon: typeof CheckCi
 // Tabs
 // ============================================
 
-type TabKey = 'synthese' | 'ratios' | 'charges' | 'comparaison' | 'tracabilite';
+type TabKey = 'synthese' | 'performance' | 'ratios' | 'charges' | 'comparaison' | 'tracabilite';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'synthese', label: 'Synthèse' },
+  { key: 'performance', label: 'Performance opérationnelle' },
   { key: 'ratios', label: 'Ratios' },
   { key: 'charges', label: 'Charges & Revenus' },
   { key: 'comparaison', label: 'Comparaison N-1' },
@@ -153,36 +181,45 @@ function analysisStatusBadge(status: AnalysisStatus): 'processing' | 'completed'
   return map[status];
 }
 
+const MONETARY_RATIOS = new Set([
+  'resultat_net', 'ca_total_ht', 'charges_total_ttc', 'capacite_autofinancement',
+  'ca_par_collaborateur', 'panier_moyen_global', 'panier_moyen_transaction',
+  'panier_moyen_gestion', 'panier_moyen_location', 'point_mort_mensuel',
+]);
+
+const PERCENTAGE_RATIOS = new Set([
+  'marge_nette', 'marge_brute', 'taux_endettement', 'ratio_charges_ca',
+  'ratio_masse_salariale', 'marge_operationnelle_nxt', 'couverture_charges',
+  'taux_recurrence', 'concentration_ca_top3', 'part_ca_transaction',
+  'part_ca_gestion', 'part_ca_location', 'ratio_charges_fixes_ca',
+  'coherence_ca', 'couverture_charges_reelles',
+]);
+
+const DAYS_RATIOS = new Set(['bfr_jours', 'delai_encaissement_moyen']);
+const MONTHS_RATIOS = new Set(['runway_tresorerie']);
+const COUNT_RATIOS = new Set([
+  'nb_transactions_total', 'nb_transactions_transaction',
+  'nb_transactions_gestion', 'nb_transactions_location',
+]);
+
 function formatRatioValue(ratio: FinancialRatio): string {
   const key = ratio.ratio_key;
-  // Monetary values
-  if (['resultat_net', 'ca_total_ht', 'charges_total_ttc', 'capacite_autofinancement', 'ca_par_collaborateur'].includes(key)) {
-    return formatCurrency(ratio.value);
-  }
-  // Percentage values
-  if (['marge_nette', 'marge_brute', 'taux_endettement', 'ratio_charges_ca', 'ratio_masse_salariale', 'marge_operationnelle_nxt', 'couverture_charges'].includes(key)) {
-    return ratio.value.toFixed(1) + '%';
-  }
-  // Days
-  if (key === 'bfr_jours') {
-    return ratio.value.toFixed(1) + ' j';
-  }
-  // Default: plain ratio
+  if (MONETARY_RATIOS.has(key)) return formatCurrency(ratio.value);
+  if (PERCENTAGE_RATIOS.has(key)) return ratio.value.toFixed(1) + '%';
+  if (DAYS_RATIOS.has(key)) return ratio.value.toFixed(1) + ' j';
+  if (MONTHS_RATIOS.has(key)) return ratio.value.toFixed(1) + ' mois';
+  if (COUNT_RATIOS.has(key)) return String(Math.round(ratio.value));
   return ratio.value.toFixed(1);
 }
 
 function formatNMinus1Value(ratio: FinancialRatio): string {
   if (ratio.value_n_minus_1 == null) return '—';
   const key = ratio.ratio_key;
-  if (['resultat_net', 'ca_total_ht', 'charges_total_ttc', 'capacite_autofinancement', 'ca_par_collaborateur'].includes(key)) {
-    return formatCurrency(ratio.value_n_minus_1);
-  }
-  if (['marge_nette', 'marge_brute', 'taux_endettement', 'ratio_charges_ca', 'ratio_masse_salariale', 'marge_operationnelle_nxt', 'couverture_charges'].includes(key)) {
-    return ratio.value_n_minus_1.toFixed(1) + '%';
-  }
-  if (key === 'bfr_jours') {
-    return ratio.value_n_minus_1.toFixed(1) + ' j';
-  }
+  if (MONETARY_RATIOS.has(key)) return formatCurrency(ratio.value_n_minus_1);
+  if (PERCENTAGE_RATIOS.has(key)) return ratio.value_n_minus_1.toFixed(1) + '%';
+  if (DAYS_RATIOS.has(key)) return ratio.value_n_minus_1.toFixed(1) + ' j';
+  if (MONTHS_RATIOS.has(key)) return ratio.value_n_minus_1.toFixed(1) + ' mois';
+  if (COUNT_RATIOS.has(key)) return String(Math.round(ratio.value_n_minus_1));
   return ratio.value_n_minus_1.toFixed(1);
 }
 
@@ -290,6 +327,9 @@ export function AnalysisDetailPage({ id }: Props) {
           ratios={ratios ?? analysis.ratios ?? []}
         />
       )}
+      {activeTab === 'performance' && (
+        <TabPerformance ratios={ratios ?? analysis.ratios ?? []} />
+      )}
       {activeTab === 'ratios' && (
         <TabRatios ratios={ratios ?? analysis.ratios ?? []} />
       )}
@@ -338,11 +378,12 @@ function TabSynthese({
       ratio_liquidite: 'liquidite',
       bfr_jours: 'liquidite',
       ca_par_collaborateur: 'productivite',
-      ca_total_ht: 'productivite',
+      ratio_masse_salariale: 'productivite',
       ratio_charges_ca: 'charges',
-      ratio_masse_salariale: 'charges',
-      charges_total_ttc: 'charges',
-      couverture_charges: 'charges',
+      ratio_charges_fixes_ca: 'charges',
+      taux_recurrence: 'dynamique_commerciale',
+      concentration_ca_top3: 'risques',
+      runway_tresorerie: 'risques',
     };
 
     const scores: Record<string, { total: number; count: number }> = {};
@@ -392,7 +433,7 @@ function TabSynthese({
       </SectionCard>
 
       {/* Category scores */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {categoryScores.map((cat) => {
           const Icon = cat.icon;
           return (
@@ -457,6 +498,116 @@ function TabSynthese({
           </div>
         )}
       </SectionCard>
+    </div>
+  );
+}
+
+// ============================================
+// Tab: Performance opérationnelle
+// ============================================
+
+function TabPerformance({ ratios }: { ratios: FinancialRatio[] }) {
+  const ratioMap = new Map(ratios.map((r) => [r.ratio_key, r]));
+
+  function renderKpi(key: string) {
+    const r = ratioMap.get(key);
+    if (!r) return null;
+    return (
+      <div key={key} className="rounded-lg border p-4 space-y-1">
+        <p className="text-xs text-muted-foreground">
+          {RATIO_KEY_LABELS[key] ?? key}
+        </p>
+        <p className={cn('text-lg font-bold tabular-nums', ratioStatusColor(r.status))}>
+          {formatRatioValue(r)}
+        </p>
+        {r.benchmark_min != null && r.benchmark_max != null && (
+          <p className="text-[10px] text-muted-foreground">
+            Benchmark : {r.benchmark_min} — {r.benchmark_max}
+          </p>
+        )}
+        <StatusBadge
+          status={ratioStatusBadgeVariant(r.status)}
+          label={RATIO_STATUS_LABELS[r.status]}
+        />
+      </div>
+    );
+  }
+
+  const hasVolume = ratioMap.has('nb_transactions_total');
+  const hasStructure = ratioMap.has('part_ca_transaction') || ratioMap.has('taux_recurrence');
+  const hasRisques = ratioMap.has('concentration_ca_top3') || ratioMap.has('runway_tresorerie');
+  const hasSeuils = ratioMap.has('point_mort_mensuel') || ratioMap.has('ratio_charges_fixes_ca');
+
+  if (!hasVolume && !hasStructure && !hasRisques && !hasSeuils) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground">
+        Aucune donnée opérationnelle disponible. Lancez une analyse pour calculer les indicateurs.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Volume d'activité */}
+      {hasVolume && (
+        <SectionCard title="Volume d'activité">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {renderKpi('nb_transactions_total')}
+            {renderKpi('nb_transactions_transaction')}
+            {renderKpi('nb_transactions_gestion')}
+            {renderKpi('nb_transactions_location')}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+            {renderKpi('panier_moyen_global')}
+            {renderKpi('panier_moyen_transaction')}
+            {renderKpi('panier_moyen_gestion')}
+            {renderKpi('panier_moyen_location')}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Structure du CA */}
+      {hasStructure && (
+        <SectionCard title="Structure du chiffre d'affaires">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {renderKpi('part_ca_transaction')}
+            {renderKpi('part_ca_gestion')}
+            {renderKpi('part_ca_location')}
+            {renderKpi('taux_recurrence')}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Risques opérationnels */}
+      {hasRisques && (
+        <SectionCard title="Risques opérationnels">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {renderKpi('concentration_ca_top3')}
+            {renderKpi('runway_tresorerie')}
+            {renderKpi('delai_encaissement_moyen')}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Seuils de survie */}
+      {hasSeuils && (
+        <SectionCard title="Seuils de survie">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {renderKpi('point_mort_mensuel')}
+            {renderKpi('ratio_charges_fixes_ca')}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Merged ratios (cohérence bilan/NXT) */}
+      {(ratioMap.has('coherence_ca') || ratioMap.has('couverture_charges_reelles')) && (
+        <SectionCard title="Cohérence bilan / NXT">
+          <div className="grid grid-cols-2 gap-3">
+            {renderKpi('coherence_ca')}
+            {renderKpi('couverture_charges_reelles')}
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }

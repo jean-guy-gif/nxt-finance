@@ -274,7 +274,7 @@ export function AnalyseMainPage() {
                     router.push(`/analyse/${latestAnalysis.id}`)
                   }
                 >
-                  Voir le detail
+                  Voir le détail
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </CardContent>
