@@ -319,14 +319,19 @@ const RATIO_LABELS: Record<string, string> = {
   marge_operationnelle_nxt: 'Marge opérationnelle',
   taux_endettement: "Taux d'endettement",
   ratio_liquidite: 'Ratio de liquidité',
+  bfr_jours: 'Besoin en fonds de roulement (jours)',
+  capacite_autofinancement: "Capacité d'autofinancement",
+  resultat_net: 'Résultat net',
   ratio_charges_ca: 'Ratio charges / CA',
   ratio_masse_salariale: 'Ratio masse salariale',
   ca_par_collaborateur: 'CA par collaborateur',
+  ca_total_ht: 'CA total HT',
+  charges_total_ttc: 'Charges totales',
   taux_recurrence: 'Taux de récurrence',
-  concentration_ca_top3: 'Concentration CA top 3',
+  concentration_ca_top3: 'Concentration CA top 3 collaborateurs',
   delai_encaissement_moyen: 'Délai encaissement moyen',
   ratio_charges_fixes_ca: 'Ratio charges fixes / CA',
-  runway_tresorerie: 'Runway trésorerie',
+  runway_tresorerie: 'Mois de trésorerie disponibles',
   point_mort_mensuel: 'Point mort mensuel',
   coherence_ca: 'Cohérence CA bilan/NXT',
   couverture_charges_reelles: 'Couverture charges réelles',
@@ -396,9 +401,13 @@ async function generateInsights(
   const healthyRatios = ratios
     .filter((r) => r.status === 'healthy' && RATIO_LABELS[r.ratio_key])
     .slice(0, 3);
+  // Critical first, then warning — up to 5 for richer context
   const weakRatios = ratios
     .filter((r) => (r.status === 'critical' || r.status === 'warning') && RATIO_LABELS[r.ratio_key])
-    .slice(0, 3);
+    .sort((a, b) => (a.status === 'critical' ? 0 : 1) - (b.status === 'critical' ? 0 : 1))
+    .slice(0, 5);
+  const criticalRatios = weakRatios.filter((r) => r.status === 'critical');
+  const warningRatios = weakRatios.filter((r) => r.status === 'warning');
 
   // Fetch collaborator count
   const { count: nbCollabs } = await supabase
@@ -512,6 +521,11 @@ async function generateInsights(
   {
     const signals: string[] = [];
 
+    // Critical ratios = highest priority signals
+    for (const r of criticalRatios) {
+      signals.push(formatRatioForPrompt(r));
+    }
+
     // Tendances 3 mois en baisse
     if (trendCa?.direction === 'down') {
       signals.push(`- Tendance CA 3 mois : en baisse de ${Math.abs(trendCa.variation_pct).toFixed(1)}%`);
@@ -531,12 +545,9 @@ async function generateInsights(
       signals.push(`- Sous-performance saisonnière : le mois en cours est à ${currentSeason.performance_vs_expected.toFixed(0)}% de la performance attendue`);
     }
 
-    // Warning ratios (could become critical)
-    const warningOnly = ratios
-      .filter((r) => r.status === 'warning' && RATIO_LABELS[r.ratio_key])
-      .slice(0, 2);
-    for (const r of warningOnly) {
-      signals.push(`- ${RATIO_LABELS[r.ratio_key]} : ${r.value} — en zone de vigilance`);
+    // Warning ratios
+    for (const r of warningRatios) {
+      signals.push(`- ${RATIO_LABELS[r.ratio_key] ?? r.ratio_key} : ${r.value} — en zone de vigilance`);
     }
 
     const signalsDetail = signals.length > 0 ? signals.join('\n') : 'Aucun signal de surveillance détecté.';
@@ -557,8 +568,8 @@ async function generateInsights(
         'surveillance',
         'Points de surveillance',
         response.content,
-        [...warningOnly.map((r) => r.ratio_key)],
-        signals.length > 0 ? 'attention' : 'info',
+        weakRatios.map((r) => r.ratio_key),
+        criticalRatios.length > 0 ? 'critical' : 'attention',
         response.generationId
       );
     }
@@ -569,14 +580,25 @@ async function generateInsights(
   // =============================================
   {
     const issues: string[] = [];
+    // Include ALL critical and warning ratios for full context
     for (const r of weakRatios) {
       issues.push(formatRatioForPrompt(r));
     }
+    // Add trends context
     if (trendCa?.direction === 'down') {
       issues.push(`- Tendance CA en baisse : ${trendCa.variation_pct.toFixed(1)}% sur 3 mois`);
     }
     if (temporalData?.trends?.charges?.direction === 'up') {
       issues.push(`- Charges en hausse : +${temporalData.trends.charges.variation_pct.toFixed(1)}% sur 3 mois`);
+    }
+    // Add key context even if not in weak (helps LLM give actionable advice)
+    const concentration = ratioMap.get('concentration_ca_top3');
+    if (concentration && !weakRatios.some((r) => r.ratio_key === 'concentration_ca_top3')) {
+      issues.push(`- Concentration CA top 3 : ${concentration.value}% (${concentration.status})`);
+    }
+    const runway = ratioMap.get('runway_tresorerie');
+    if (runway && runway.value < 4) {
+      issues.push(`- Runway trésorerie : ${runway.value.toFixed(1)} mois`);
     }
 
     const issuesDetail = issues.length > 0 ? issues.join('\n') : 'Aucune faiblesse majeure identifiée.';

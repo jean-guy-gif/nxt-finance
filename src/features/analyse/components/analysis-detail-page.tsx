@@ -391,6 +391,24 @@ function InsightPlaceholder({ loading }: { loading?: boolean }) {
   );
 }
 
+/** Render light markdown: **bold**, → arrows, line breaks */
+function renderMarkdown(text: string) {
+  // Split by line, process each
+  return text.split('\n').map((line, i) => {
+    // Replace **bold** with <strong>
+    const parts = line.split(/\*\*(.+?)\*\*/g);
+    const rendered = parts.map((part, j) =>
+      j % 2 === 1 ? <strong key={j} className="font-semibold text-foreground">{part}</strong> : part
+    );
+    return (
+      <span key={i}>
+        {i > 0 && <br />}
+        {rendered}
+      </span>
+    );
+  });
+}
+
 function InsightBlock({
   insight,
   icon: Icon,
@@ -408,8 +426,8 @@ function InsightBlock({
         <Icon className={cn('h-4 w-4 shrink-0', iconColor)} />
         <span className="text-sm font-semibold">{insight.title}</span>
       </div>
-      <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-        {insight.content}
+      <div className="text-sm text-muted-foreground leading-relaxed">
+        {renderMarkdown(insight.content)}
       </div>
     </div>
   );
@@ -525,7 +543,7 @@ function TabSynthese({
           Où en êtes-vous ?
         </h3>
         {directorSummary ? (
-          <p className="text-sm leading-relaxed whitespace-pre-line">{directorSummary.content}</p>
+          <div className="text-sm leading-relaxed">{renderMarkdown(directorSummary.content)}</div>
         ) : (
           <InsightPlaceholder loading={insightsLoading} />
         )}
