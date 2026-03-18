@@ -65,8 +65,8 @@ export const BILAN_AUTO_VALIDATION_CONFIDENCE = 95;
 /** Seuil de confiance minimum pour autoriser l'analyse */
 export const BILAN_ANALYSIS_CONFIDENCE_GATE = 70;
 
-/** Modèle LLM par défaut (format OpenRouter) */
-export const DEFAULT_LLM_MODEL = 'anthropic/claude-sonnet-4';
+/** Modèle LLM par défaut (format OpenRouter — nom complet) */
+export const DEFAULT_LLM_MODEL = 'anthropic/claude-sonnet-4-20250514';
 
 /** Provider LLM par défaut */
 export const DEFAULT_LLM_PROVIDER = 'openrouter';

@@ -88,8 +88,9 @@ export async function generateContent(
 
     const durationMs = Date.now() - startTime;
     const content = data?.content as string;
-    const tokensInput = (data?.tokensInput as number) ?? null;
-    const tokensOutput = (data?.tokensOutput as number) ?? null;
+    // Edge Function returns { content, usage: { input_tokens, output_tokens } }
+    const tokensInput = (data?.usage?.input_tokens as number) ?? null;
+    const tokensOutput = (data?.usage?.output_tokens as number) ?? null;
 
     // 5. Update generation record: completed
     await supabase

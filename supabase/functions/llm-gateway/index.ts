@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
       userPrompt,
       maxTokens = 4096,
       temperature = 0.3,
-      model = "anthropic/claude-sonnet-4",
+      model = "anthropic/claude-sonnet-4-20250514",
     } = await req.json();
 
     // Validate required fields

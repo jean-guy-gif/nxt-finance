@@ -299,7 +299,9 @@ async function triggerAnalysisComputation(
         temporalData
       );
     } catch (err) {
-      console.warn('[analysis-engine] LLM insights generation failed, skipping:', err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[analysis-engine] LLM insights generation failed:', errMsg);
+      // Insights are non-blocking — analysis is already 'ready' with ratios
     }
 
     // o) Complete job
