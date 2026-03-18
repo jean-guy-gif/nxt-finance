@@ -71,24 +71,40 @@ export async function generateContent(
     // 3. Resolve prompt variables
     const userPrompt = resolvePromptVariables(template.userPromptTemplate, request.variables);
 
-    // 4. Call Edge Function
-    const { data, error: fnError } = await supabase.functions.invoke('llm-gateway', {
-      body: {
+    // 4. Call Edge Function via direct fetch (works from both browser and server)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    }
+
+    const fnUrl = `${supabaseUrl}/functions/v1/llm-gateway`;
+    const fnResponse = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({
         systemPrompt: template.systemPrompt,
         userPrompt,
         maxTokens: template.maxTokens,
         temperature: template.temperature,
         model: DEFAULT_LLM_MODEL,
-      },
+      }),
     });
 
-    if (fnError) {
-      throw fnError;
+    if (!fnResponse.ok) {
+      const errorText = await fnResponse.text();
+      throw new Error(`Edge Function error ${fnResponse.status}: ${errorText}`);
     }
+
+    const data = await fnResponse.json();
 
     const durationMs = Date.now() - startTime;
     const content = data?.content as string;
-    // Edge Function returns { content, usage: { input_tokens, output_tokens } }
     const tokensInput = (data?.usage?.input_tokens as number) ?? null;
     const tokensOutput = (data?.usage?.output_tokens as number) ?? null;
 
