@@ -74,7 +74,16 @@ export async function createAnalysis(
     level = bs?.status === 'validated' ? 'complete' : 'enriched';
   }
 
-  // b) Insert financial_analyses record
+  // b) Archive any existing current analysis for this agency+year+level
+  await supabase
+    .from('financial_analyses')
+    .update({ is_current: false, updated_at: new Date().toISOString() })
+    .eq('agency_id', agencyId)
+    .eq('fiscal_year', fiscalYear)
+    .eq('analysis_level', level)
+    .eq('is_current', true);
+
+  // c) Insert financial_analyses record
   const now = new Date().toISOString();
   const { data: analysis, error: insertError } = await supabase
     .from('financial_analyses')
@@ -108,18 +117,22 @@ export async function createAnalysis(
     relatedId: analysisId,
   });
 
-  // d) Fire and forget
-  triggerAnalysisComputation(
-    supabase,
-    job.id,
-    analysisId,
-    agencyId,
-    fiscalYear,
-    balanceSheetId,
-    level
-  ).catch((err) => {
-    console.error('[analysis-engine] Background computation failed:', err);
-  });
+  // d) Run computation — await to ensure ratios + score + status='ready' complete
+  //    before returning to the caller (so the UI navigates to a ready analysis)
+  try {
+    await triggerAnalysisComputation(
+      supabase,
+      job.id,
+      analysisId,
+      agencyId,
+      fiscalYear,
+      balanceSheetId,
+      level
+    );
+  } catch (err) {
+    console.error('[analysis-engine] Computation failed:', err);
+    // Analysis is still created, may be in 'computing' or 'ready' depending on where it failed
+  }
 
   // e) Return
   return { analysisId, jobId: job.id };
@@ -241,7 +254,7 @@ async function triggerAnalysisComputation(
     // i) Progress 60%
     await updateJobProgress(supabase, jobId, 60);
 
-    // j) Compute health score
+    // j) Compute health score + update status to 'ready' in ONE call
     const { score } = computeHealthScore(
       allRawRatios.map((r) => ({ key: r.key, value: r.value }))
     );
@@ -250,14 +263,6 @@ async function triggerAnalysisComputation(
       .from('financial_analyses')
       .update({
         health_score: score,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', analysisId);
-
-    // k) Update analysis status to 'ready' FIRST (before temporal + LLM)
-    await supabase
-      .from('financial_analyses')
-      .update({
         status: 'ready',
         updated_at: new Date().toISOString(),
       })

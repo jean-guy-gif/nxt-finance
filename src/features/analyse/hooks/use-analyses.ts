@@ -134,6 +134,9 @@ export function useCreateAnalysis() {
       });
       queryClient.invalidateQueries({ queryKey: ['analyses'] });
     },
+    onError: (error) => {
+      console.error('[useCreateAnalysis] Failed:', error);
+    },
   });
 }
 

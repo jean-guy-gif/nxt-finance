@@ -12,6 +12,7 @@ import { ErrorState } from '@/components/shared/error-state';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useBalanceSheets } from '../hooks/use-balance-sheets';
 import { useAnalyses, useCreateAnalysis, useInsights } from '@/features/analyse/hooks/use-analyses';
+import { useToast } from '@/components/shared/toast';
 import { getHealthLabel } from '@/features/analyse/services/ratio-engine/scoring';
 import {
   BALANCE_SHEET_STATUS_LABELS,
@@ -86,6 +87,7 @@ export function AnalyseMainPage() {
   } = useAnalyses();
 
   const createAnalysis = useCreateAnalysis();
+  const { toast } = useToast();
 
   const isLoading = sheetsLoading || analysesLoading;
   const hasError = sheetsError || analysesError;
@@ -102,8 +104,14 @@ export function AnalyseMainPage() {
     )[0];
 
   const handleCreateAnalysis = () => {
-    const onSuccess = (data: { analysisId: string }) => {
-      router.push(`/analyse/${data.analysisId}`);
+    const callbacks = {
+      onSuccess: (data: { analysisId: string }) => {
+        toast('Analyse lancée avec succès', 'success');
+        router.push(`/analyse/${data.analysisId}`);
+      },
+      onError: () => {
+        toast('Impossible de lancer l\'analyse. Vérifiez votre connexion.', 'error');
+      },
     };
 
     if (hasBilans && sheets) {
@@ -112,13 +120,13 @@ export function AnalyseMainPage() {
       )[0];
       createAnalysis.mutate(
         { fiscalYear: latestSheet.fiscal_year, balanceSheetId: latestSheet.id },
-        { onSuccess }
+        callbacks
       );
     } else {
       const currentYear = new Date().getFullYear();
       createAnalysis.mutate(
         { fiscalYear: currentYear },
-        { onSuccess }
+        callbacks
       );
     }
   };
