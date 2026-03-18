@@ -23,6 +23,8 @@ export const expenseFormSchema = z.object({
     message: 'Le statut est requis',
   }),
   comment: z.string().max(500).optional().or(z.literal('')),
+  supplier_name: z.string().max(200).optional().or(z.literal('')),
+  acquisition_channel: z.string().max(100).optional().or(z.literal('')),
 });
 
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -37,4 +39,6 @@ export const defaultExpenseValues: ExpenseFormValues = {
   payment_method: undefined,
   status: 'draft',
   comment: '',
+  supplier_name: '',
+  acquisition_channel: '',
 };

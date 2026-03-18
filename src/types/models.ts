@@ -608,3 +608,28 @@ export interface BpNarrative extends BaseEntity {
   content: string;
   llm_generation_id: string | null;
 }
+
+// ============================================
+// V3.5 — Performance commerciale
+// ============================================
+
+export interface AcquisitionChannel extends BaseEntity {
+  agency_id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface CommercialKpi extends BaseEntity {
+  agency_id: string;
+  period_month: number;
+  period_year: number;
+  source_channel: string | null;
+  nb_contacts: number;
+  nb_estimations: number;
+  nb_mandats: number;
+  nb_compromis: number;
+  nb_actes: number;
+  ca_generated: number | null;
+  source_system: string;
+  notes: string | null;
+}

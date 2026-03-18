@@ -28,6 +28,7 @@ import {
 } from './expense-schema';
 import type { Expense } from '@/types/models';
 import { Loader2 } from 'lucide-react';
+import { useAcquisitionChannels } from '@/features/performance/hooks/use-commercial-kpis';
 
 interface ExpenseFormProps {
   expense?: Expense;
@@ -68,6 +69,8 @@ export function ExpenseForm({
   const currentCategory = watch('category');
   const currentStatus = watch('status');
   const currentPayment = watch('payment_method');
+  const { data: channels } = useAcquisitionChannels();
+  const isMarketingCategory = currentCategory === 'publicite_marketing';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -127,6 +130,38 @@ export function ExpenseForm({
           </Select>
         </div>
       </div>
+
+      {/* Conditional: marketing supplier + channel */}
+      {isMarketingCategory && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="supplier_name">Fournisseur pub / média</Label>
+            <Input
+              id="supplier_name"
+              placeholder="Ex : SeLoger, Google Ads"
+              {...register('supplier_name')}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Canal d&apos;acquisition</Label>
+            <Select
+              value={watch('acquisition_channel') ?? undefined}
+              onValueChange={(v) => { if (v) setValue('acquisition_channel', v); }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Canal (optionnel)" />
+              </SelectTrigger>
+              <SelectContent>
+                {(channels ?? []).map((ch) => (
+                  <SelectItem key={ch.id} value={ch.name}>
+                    {ch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Date + Payment method */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
