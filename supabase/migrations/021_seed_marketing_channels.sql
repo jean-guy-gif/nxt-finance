@@ -12,7 +12,7 @@ DECLARE
   v_season DECIMAL[] := ARRAY[0.70, 0.75, 0.95, 1.10, 1.20, 1.30, 1.25, 1.15, 1.10, 1.00, 0.80, 0.70];
   v_month_names TEXT[] := ARRAY['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   m INTEGER;
-  v_date TEXT;
+  v_date DATE;
   v_ttc DECIMAL;
   v_ht DECIMAL;
   v_vat DECIMAL;
