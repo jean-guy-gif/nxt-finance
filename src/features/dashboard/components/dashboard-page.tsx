@@ -28,7 +28,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { KpiCard } from '@/components/shared/kpi-card';
-import { AlertBanner } from '@/components/shared/alert-banner';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { StatCard } from '@/components/shared/stat-card';
 import { LoadingState } from '@/components/shared/loading-state';
@@ -43,7 +42,6 @@ import {
   useDashboardVat,
   useTreasury,
 } from '../hooks/use-dashboard';
-import { useAlertEngine, useAlerts, useDismissAlert } from '@/features/alerts/hooks/use-alerts';
 import { useAlertsV3 } from '@/features/alerts/hooks/use-alerts-v3';
 import { AlertCard } from '@/features/alerts/components/alert-card';
 import { usePayoutSummary } from '@/features/collaborators/hooks/use-collaborators';
@@ -64,11 +62,6 @@ export function DashboardPage() {
   const vat = useDashboardVat();
   const treasury = useTreasury();
   const payout = usePayoutSummary();
-
-  // Run alert engine (computes + syncs to DB), then fetch for display
-  useAlertEngine();
-  const alerts = useAlerts(5);
-  const dismissMutation = useDismissAlert();
 
   // V3 alerts — top 3 most critical for dashboard widget
   const alertsV3 = useAlertsV3();
@@ -94,7 +87,6 @@ export function DashboardPage() {
           admin.refetch();
           vat.refetch();
           treasury.refetch();
-          alerts.refetch();
         }}
       />
     );
@@ -201,35 +193,27 @@ export function DashboardPage() {
         >
           <BarChart3 className="h-4 w-4" />
           <div className="text-left">
-            <div className="text-sm font-medium">Analyse financi&egrave;re</div>
+            <div className="text-sm font-medium">Analyse financière</div>
             <div className="text-xs text-muted-foreground">Bilans et ratios</div>
           </div>
         </Button>
-        {/* Business Plan — V3.6 placeholder */}
-        <Button variant="outline" className="justify-start gap-2 h-auto py-3" disabled>
+        {/* Business Plan — not yet available */}
+        <Button variant="outline" className="justify-start gap-2 h-auto py-3 opacity-50 cursor-default" disabled>
           <TrendingUp className="h-4 w-4" />
           <div className="text-left">
             <div className="text-sm font-medium">Business Plan</div>
-            <div className="text-xs text-muted-foreground">Bient&ocirc;t disponible</div>
+            <div className="text-xs text-muted-foreground">Non disponible en démo</div>
           </div>
         </Button>
-        {/* Dossier bancaire — V3.7 placeholder */}
-        <Button variant="outline" className="justify-start gap-2 h-auto py-3" disabled>
+        {/* Dossier bancaire — not yet available */}
+        <Button variant="outline" className="justify-start gap-2 h-auto py-3 opacity-50 cursor-default" disabled>
           <Landmark className="h-4 w-4" />
           <div className="text-left">
             <div className="text-sm font-medium">Dossier bancaire</div>
-            <div className="text-xs text-muted-foreground">Bient&ocirc;t disponible</div>
+            <div className="text-xs text-muted-foreground">Non disponible en démo</div>
           </div>
         </Button>
       </div>
-
-      {/* Alerts */}
-      <AlertsSection
-        alerts={alerts.data}
-        isLoading={alerts.isLoading}
-        onDismiss={(id) => dismissMutation.mutate(id)}
-        onTreasuryClick={() => setShowBalance(true)}
-      />
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         {/* Administrative status + VAT */}
@@ -447,48 +431,6 @@ export function DashboardPage() {
 }
 
 // --- Sub-components ---
-
-function AlertsSection({
-  alerts,
-  isLoading,
-  onDismiss,
-  onTreasuryClick,
-}: {
-  alerts: Awaited<ReturnType<typeof import('@/features/alerts/services/alerts-service').fetchPriorityAlerts>> | undefined;
-  isLoading: boolean;
-  onDismiss: (alertId: string) => void;
-  onTreasuryClick: () => void;
-}) {
-  if (isLoading) return null;
-  if (!alerts || alerts.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <h2 className="text-sm font-medium text-muted-foreground">
-        Alertes prioritaires
-      </h2>
-      {alerts.map((alert) => {
-        // Treasury alerts open a comparison dialog instead of navigating
-        const isTreasury = alert.category === 'treasury';
-        const alertHref = isTreasury ? undefined :
-          alert.category === 'vat' ? '/periodes' :
-          alert.category === 'pre_accounting' ? '/depenses?missing_receipt=1' :
-          alert.category === 'accountant' ? '/comptable?tab=requests' :
-          undefined;
-        return (
-          <AlertBanner
-            key={alert.id}
-            level={alert.level}
-            message={alert.message}
-            href={alertHref}
-            action={isTreasury ? { label: 'Voir le détail', onClick: onTreasuryClick } : undefined}
-            onDismiss={() => onDismiss(alert.id)}
-          />
-        );
-      })}
-    </div>
-  );
-}
 
 function VatSnapshotBlock({
   vat,

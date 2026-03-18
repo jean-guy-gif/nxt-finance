@@ -52,6 +52,7 @@ export function RevenueDetailPage({ id }: Props) {
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [confirmPayout, setConfirmPayout] = useState<{ splitId: string; status: PayoutStatus } | null>(null);
   const { guard, showBlock, setShowBlock } = useDemoGuard();
 
   async function handlePayoutChange(splitId: string, status: PayoutStatus) {
@@ -249,7 +250,7 @@ export function RevenueDetailPage({ id }: Props) {
                         variant="default"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => handlePayoutChange(split.id, 'paid')}
+                        onClick={() => setConfirmPayout({ splitId: split.id, status: 'paid' })}
                         disabled={payoutMutation.isPending}
                       >
                         Marquer reversé
@@ -260,7 +261,7 @@ export function RevenueDetailPage({ id }: Props) {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => handlePayoutChange(split.id, 'cancelled')}
+                        onClick={() => setConfirmPayout({ splitId: split.id, status: 'cancelled' })}
                         disabled={payoutMutation.isPending}
                       >
                         Annuler
@@ -271,7 +272,7 @@ export function RevenueDetailPage({ id }: Props) {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => handlePayoutChange(split.id, 'pending')}
+                        onClick={() => setConfirmPayout({ splitId: split.id, status: 'pending' })}
                         disabled={payoutMutation.isPending}
                       >
                         Remettre en attente
@@ -282,7 +283,7 @@ export function RevenueDetailPage({ id }: Props) {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => handlePayoutChange(split.id, 'pending')}
+                        onClick={() => setConfirmPayout({ splitId: split.id, status: 'pending' })}
                         disabled={payoutMutation.isPending}
                       >
                         Réactiver
@@ -353,6 +354,41 @@ export function RevenueDetailPage({ id }: Props) {
       />
 
       <DemoBlockDialog open={showBlock} onOpenChange={setShowBlock} />
+
+      {/* Payout confirmation dialog */}
+      <ConfirmDialog
+        open={confirmPayout !== null}
+        onOpenChange={(open) => { if (!open) setConfirmPayout(null); }}
+        title={
+          confirmPayout?.status === 'paid'
+            ? 'Confirmer le reversement'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Annuler le reversement'
+              : 'Remettre en attente'
+        }
+        description={
+          confirmPayout?.status === 'paid'
+            ? 'Ce reversement sera marqué comme effectué. Confirmez-vous que le virement ou le paiement a bien été réalisé ?'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Ce reversement sera annulé. Cette action est réversible.'
+              : 'Ce reversement sera remis en attente de paiement.'
+        }
+        confirmLabel={
+          confirmPayout?.status === 'paid'
+            ? 'Confirmer le reversement'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Annuler le reversement'
+              : 'Remettre en attente'
+        }
+        variant={confirmPayout?.status === 'cancelled' ? 'destructive' : 'default'}
+        isLoading={payoutMutation.isPending}
+        onConfirm={() => {
+          if (confirmPayout) {
+            handlePayoutChange(confirmPayout.splitId, confirmPayout.status);
+            setConfirmPayout(null);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -90,7 +90,7 @@ export function StepUpload({ onUploadComplete }: StepUploadProps) {
             <div>
               <p className="text-sm font-medium">Import libre</p>
               <p className="text-xs text-muted-foreground">
-                PDF ou Excel, extraction automatique
+                PDF ou Excel, import structuré
               </p>
             </div>
           </button>

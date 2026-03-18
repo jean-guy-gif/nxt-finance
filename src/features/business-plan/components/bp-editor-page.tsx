@@ -77,10 +77,10 @@ function bpStatusToBadgeVariant(status: BpStatus): 'draft' | 'processing' | 'com
 
 function formatCurrencyShort(value: number): string {
   if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} M\u20AC`;
+    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} M€`;
   }
   if (Math.abs(value) >= 1_000) {
-    return `${(value / 1_000).toFixed(1).replace('.', ',')} k\u20AC`;
+    return `${(value / 1_000).toFixed(1).replace('.', ',')} k€`;
   }
   return formatCurrency(value);
 }
@@ -145,7 +145,7 @@ function HypothesisRow({
     }
   }, [localValue, hypothesis.id, hypothesis.value, onUpdate]);
 
-  const suffix = hypothesis.value_type === 'percentage' ? '%' : '\u20AC';
+  const suffix = hypothesis.value_type === 'percentage' ? '%' : '€';
 
   return (
     <div className="flex items-center justify-between gap-3 py-2">

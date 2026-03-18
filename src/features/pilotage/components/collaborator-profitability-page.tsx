@@ -64,7 +64,7 @@ const MONTH_LABELS: Record<number, string> = {
 function formatCurrency(value: number): string {
   return (
     new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) +
-    ' \u20AC'
+    ' €'
   );
 }
 
@@ -139,7 +139,7 @@ export function CollaboratorProfitabilityPage({ id }: { id: string }) {
       sorted.map((s) => ({
         month: `${MONTH_LABELS[s.period_month]} ${String(s.period_year).slice(2)}`,
         CA: s.revenue_total,
-        'Co\u00FBt': s.cost_total,
+        'Coût': s.cost_total,
         Marge: s.margin,
       })),
     [sorted],

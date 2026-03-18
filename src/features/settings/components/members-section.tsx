@@ -52,9 +52,9 @@ export function MembersSection() {
     <SectionCard
       title="Utilisateurs et rôles"
       action={
-        <Button variant="outline" size="sm" disabled>
-          Bientôt disponible
-        </Button>
+        <span className="text-xs text-muted-foreground/70 italic">
+          Gestion des invitations non disponible en démo
+        </span>
       }
     >
       <p className="text-sm text-muted-foreground mb-4">

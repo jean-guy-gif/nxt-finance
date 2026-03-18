@@ -341,71 +341,77 @@ export function PeriodDetailPage({ periodId }: Props) {
       )}
 
       {/* Inline detail lists — collapsible */}
-      <SectionCard
-        title={`Recettes de la période (${revenues.data?.length ?? 0})`}
-        action={
-          <Button variant="ghost" size="sm" onClick={() => setShowRevenues(!showRevenues)}>
+      <Card>
+        <CardHeader
+          className="flex flex-row items-center justify-between pb-3 cursor-pointer select-none"
+          onClick={() => setShowRevenues(!showRevenues)}
+        >
+          <CardTitle className="text-base">
+            Recettes de la période ({revenues.data?.length ?? 0})
+          </CardTitle>
+          <Button variant="ghost" size="sm" tabIndex={-1}>
             {showRevenues ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
-        }
-      >
+        </CardHeader>
         {showRevenues && (
-          revenues.data && revenues.data.length > 0 ? (
-            <div className="divide-y">
-              {revenues.data.map((r) => (
-                <a key={r.id} href={`/recettes/${r.id}`} className="flex items-center justify-between py-2 px-1 hover:bg-muted/30 rounded transition-colors">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{r.label}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(r.date)}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className="text-sm font-medium">{formatCurrency(r.amount)}</span>
-                    <StatusBadge status={r.status} label={REVENUE_STATUS_LABELS[r.status]} />
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucune recette sur cette période</p>
-          )
+          <CardContent>
+            {revenues.data && revenues.data.length > 0 ? (
+              <div className="divide-y">
+                {revenues.data.map((r) => (
+                  <a key={r.id} href={`/recettes/${r.id}`} className="flex items-center justify-between py-2 px-1 hover:bg-muted/30 rounded transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{r.label}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(r.date)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="text-sm font-medium">{formatCurrency(r.amount)}</span>
+                      <StatusBadge status={r.status} label={REVENUE_STATUS_LABELS[r.status]} />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucune recette sur cette période</p>
+            )}
+          </CardContent>
         )}
-        {!showRevenues && (
-          <p className="text-xs text-muted-foreground">Cliquez pour afficher le détail</p>
-        )}
-      </SectionCard>
+      </Card>
 
-      <SectionCard
-        title={`Dépenses de la période (${expenses.data?.length ?? 0})`}
-        action={
-          <Button variant="ghost" size="sm" onClick={() => setShowExpenses(!showExpenses)}>
+      <Card>
+        <CardHeader
+          className="flex flex-row items-center justify-between pb-3 cursor-pointer select-none"
+          onClick={() => setShowExpenses(!showExpenses)}
+        >
+          <CardTitle className="text-base">
+            Dépenses de la période ({expenses.data?.length ?? 0})
+          </CardTitle>
+          <Button variant="ghost" size="sm" tabIndex={-1}>
             {showExpenses ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
-        }
-      >
+        </CardHeader>
         {showExpenses && (
-          expenses.data && expenses.data.length > 0 ? (
-            <div className="divide-y">
-              {expenses.data.map((e) => (
-                <a key={e.id} href={`/depenses/${e.id}`} className="flex items-center justify-between py-2 px-1 hover:bg-muted/30 rounded transition-colors">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{e.supplier}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(e.date)} — {EXPENSE_CATEGORY_LABELS[e.category]}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className="text-sm font-medium">{formatCurrency(e.amount_ttc)}</span>
-                    <StatusBadge status={e.status} label={EXPENSE_STATUS_LABELS[e.status]} />
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucune dépense sur cette période</p>
-          )
+          <CardContent>
+            {expenses.data && expenses.data.length > 0 ? (
+              <div className="divide-y">
+                {expenses.data.map((e) => (
+                  <a key={e.id} href={`/depenses/${e.id}`} className="flex items-center justify-between py-2 px-1 hover:bg-muted/30 rounded transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{e.supplier}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(e.date)} — {EXPENSE_CATEGORY_LABELS[e.category]}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="text-sm font-medium">{formatCurrency(e.amount_ttc)}</span>
+                      <StatusBadge status={e.status} label={EXPENSE_STATUS_LABELS[e.status]} />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucune dépense sur cette période</p>
+            )}
+          </CardContent>
         )}
-        {!showExpenses && (
-          <p className="text-xs text-muted-foreground">Cliquez pour afficher le détail</p>
-        )}
-      </SectionCard>
+      </Card>
 
       {/* Confirm dialogs */}
       <ConfirmDialog

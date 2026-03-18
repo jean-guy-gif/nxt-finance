@@ -228,11 +228,9 @@ export function ExpenseListPage() {
           <DialogHeader>
             <DialogTitle>Ajouter un justificatif</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground mb-1">
+          <p className="text-sm text-muted-foreground mb-3">
             Le justificatif sera ajouté en attente de rattachement à une dépense.
-          </p>
-          <p className="text-xs text-muted-foreground/70 mb-3">
-            Le pré-remplissage automatique (OCR) n'est pas encore disponible. Vous devrez saisir les informations manuellement.
+            Les informations devront être saisies manuellement.
           </p>
           <FileUpload
             onFilesSelected={handleUpload}

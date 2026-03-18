@@ -40,7 +40,7 @@ import { useToast } from '@/components/shared/toast';
 function formatCurrency(value: number): string {
   return (
     new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) +
-    ' \u20ac'
+    ' €'
   );
 }
 
@@ -54,7 +54,7 @@ type PilotageTab = 'collaborator' | 'activity' | 'agency';
 
 const TAB_OPTIONS: { key: PilotageTab; label: string }[] = [
   { key: 'collaborator', label: 'Par collaborateur' },
-  { key: 'activity', label: 'Par activit\u00e9' },
+  { key: 'activity', label: 'Par activité' },
   { key: 'agency', label: 'Vue agence' },
 ];
 
@@ -85,12 +85,12 @@ const collaboratorColumns: ColumnDef<ProfitabilitySnapshot, unknown>[] = [
   },
   {
     accessorKey: 'revenue_total',
-    header: 'CA g\u00e9n\u00e9r\u00e9',
+    header: 'CA généré',
     cell: ({ row }) => formatCurrency(row.original.revenue_total),
   },
   {
     accessorKey: 'cost_total',
-    header: 'Co\u00fbt',
+    header: 'Coût',
     cell: ({ row }) => formatCurrency(row.original.cost_total),
   },
   {
@@ -113,7 +113,7 @@ const collaboratorColumns: ColumnDef<ProfitabilitySnapshot, unknown>[] = [
   },
   {
     accessorKey: 'cost_revenue_ratio',
-    header: 'Ratio co\u00fbt/CA',
+    header: 'Ratio coût/CA',
     cell: ({ row }) => formatPercent(row.original.cost_revenue_ratio),
   },
   {
@@ -129,7 +129,7 @@ const collaboratorColumns: ColumnDef<ProfitabilitySnapshot, unknown>[] = [
             ? 'Vigilance'
             : rate >= 0
               ? 'Faible'
-              : 'D\u00e9ficitaire';
+              : 'Déficitaire';
       return <StatusBadge status={variant} label={label} />;
     },
     enableSorting: false,
@@ -145,7 +145,7 @@ function DirectorSummaryBanner() {
     return (
       <Card>
         <CardContent className="p-6">
-          <LoadingState message="Chargement du r\u00e9sum\u00e9 directeur..." />
+          <LoadingState message="Chargement du résumé directeur..." />
         </CardContent>
       </Card>
     );
@@ -155,7 +155,7 @@ function DirectorSummaryBanner() {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground text-sm">
-          Aucune donn\u00e9e de rentabilit\u00e9 disponible pour cette p\u00e9riode.
+          Aucune donnée de rentabilité disponible pour cette période.
         </CardContent>
       </Card>
     );
@@ -206,7 +206,7 @@ function DirectorSummaryBanner() {
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-blue-500 shrink-0" />
               <span>
-                Top activit\u00e9 : {summary.bestActivity.name} (
+                Top activité : {summary.bestActivity.name} (
                 {formatCurrency(summary.bestActivity.revenue)})
               </span>
             </div>
@@ -231,21 +231,21 @@ function CollaboratorTab() {
   const { data, isLoading } = useProfitabilitySnapshots('collaborator');
 
   if (isLoading) {
-    return <LoadingState message="Chargement des donn\u00e9es collaborateurs..." />;
+    return <LoadingState message="Chargement des données collaborateurs..." />;
   }
 
   if (!data || data.length === 0) {
     return (
       <EmptyState
         icon={Users}
-        title="Aucune donn\u00e9e collaborateur"
-        description="Lancez un calcul de rentabilit\u00e9 pour cette p\u00e9riode afin de g\u00e9n\u00e9rer les snapshots."
+        title="Aucune donnée collaborateur"
+        description="Lancez un calcul de rentabilité pour cette période afin de générer les snapshots."
       />
     );
   }
 
   return (
-    <SectionCard title="Rentabilit\u00e9 par collaborateur" noPadding>
+    <SectionCard title="Rentabilité par collaborateur" noPadding>
       <DataTable
         columns={collaboratorColumns}
         data={data}
@@ -260,21 +260,21 @@ function CollaboratorTab() {
   );
 }
 
-// --- Tab: Par activit\u00e9 ---
+// --- Tab: Par activité ---
 
 function ActivityTab() {
   const { data, isLoading } = useActivityProfitability();
 
   if (isLoading) {
-    return <LoadingState message="Chargement des donn\u00e9es par activit\u00e9..." />;
+    return <LoadingState message="Chargement des données par activité..." />;
   }
 
   if (!data || data.length === 0) {
     return (
       <EmptyState
         icon={BarChart3}
-        title="Aucune donn\u00e9e par activit\u00e9"
-        description="Lancez un calcul de rentabilit\u00e9 pour cette p\u00e9riode afin de g\u00e9n\u00e9rer les snapshots."
+        title="Aucune donnée par activité"
+        description="Lancez un calcul de rentabilité pour cette période afin de générer les snapshots."
       />
     );
   }
@@ -284,7 +284,7 @@ function ActivityTab() {
   const activityColumns: ColumnDef<ProfitabilitySnapshot, unknown>[] = [
     {
       accessorKey: 'scope_label',
-      header: 'Activit\u00e9',
+      header: 'Activité',
       cell: ({ row }) => (
         <span className="font-medium">{row.original.scope_label}</span>
       ),
@@ -305,7 +305,7 @@ function ActivityTab() {
     },
     {
       accessorKey: 'cost_total',
-      header: 'Co\u00fbt estim\u00e9',
+      header: 'Coût estimé',
       cell: ({ row }) => formatCurrency(row.original.cost_total),
     },
     {
@@ -329,7 +329,7 @@ function ActivityTab() {
   ];
 
   return (
-    <SectionCard title="Rentabilit\u00e9 par activit\u00e9" noPadding>
+    <SectionCard title="Rentabilité par activité" noPadding>
       <DataTable
         columns={activityColumns}
         data={data}
@@ -345,15 +345,15 @@ function AgencyTab() {
   const { data, isLoading } = useProfitabilitySnapshots('agency');
 
   if (isLoading) {
-    return <LoadingState message="Chargement des donn\u00e9es agence..." />;
+    return <LoadingState message="Chargement des données agence..." />;
   }
 
   if (!data || data.length === 0) {
     return (
       <EmptyState
         icon={Target}
-        title="Aucune donn\u00e9e agence"
-        description="Lancez un calcul de rentabilit\u00e9 pour cette p\u00e9riode afin de g\u00e9n\u00e9rer le snapshot agence."
+        title="Aucune donnée agence"
+        description="Lancez un calcul de rentabilité pour cette période afin de générer le snapshot agence."
       />
     );
   }
@@ -400,7 +400,7 @@ function AgencyTab() {
           href="/pilotage"
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
-          Voir l&apos;analyse financi\u00e8re compl\u00e8te
+          Voir l&apos;analyse financière complète
           <ArrowRight className="h-4 w-4" />
         </a>
       </div>
@@ -428,8 +428,8 @@ export function PilotagePage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
-        title="Pilotage rentabilit\u00e9"
-        description="Suivi de la rentabilit\u00e9 par collaborateur, activit\u00e9 et agence"
+        title="Pilotage rentabilité"
+        description="Suivi de la rentabilité par collaborateur, activité et agence"
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -457,7 +457,7 @@ export function PilotagePage() {
               {computeAlerts.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              V\u00e9rifier les alertes
+              Vérifier les alertes
             </Button>
           </div>
         }
@@ -472,7 +472,7 @@ export function PilotagePage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
-              Alertes rentabilit\u00e9
+              Alertes rentabilité
             </h3>
             {relevantAlerts.length > 5 && (
               <a

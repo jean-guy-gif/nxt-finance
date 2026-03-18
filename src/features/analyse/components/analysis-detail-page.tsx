@@ -72,10 +72,10 @@ const LOWER_IS_BETTER_RATIOS = new Set([
 // ============================================
 
 const SCORE_CATEGORIES = [
-  { key: 'rentabilite', label: 'Rentabilit\u00e9', weight: '30%', icon: TrendingUp },
+  { key: 'rentabilite', label: 'Rentabilité', weight: '30%', icon: TrendingUp },
   { key: 'structure', label: 'Structure', weight: '25%', icon: Shield },
-  { key: 'liquidite', label: 'Liquidit\u00e9', weight: '20%', icon: Droplets },
-  { key: 'productivite', label: 'Productivit\u00e9', weight: '15%', icon: Users },
+  { key: 'liquidite', label: 'Liquidité', weight: '20%', icon: Droplets },
+  { key: 'productivite', label: 'Productivité', weight: '15%', icon: Users },
   { key: 'charges', label: 'Charges', weight: '10%', icon: Receipt },
 ] as const;
 
@@ -94,11 +94,11 @@ const INSIGHT_CONFIG: Record<InsightType, { border: string; icon: typeof CheckCi
 type TabKey = 'synthese' | 'ratios' | 'charges' | 'comparaison' | 'tracabilite';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'synthese', label: 'Synth\u00e8se' },
+  { key: 'synthese', label: 'Synthèse' },
   { key: 'ratios', label: 'Ratios' },
   { key: 'charges', label: 'Charges & Revenus' },
   { key: 'comparaison', label: 'Comparaison N-1' },
-  { key: 'tracabilite', label: 'Tra\u00e7abilit\u00e9' },
+  { key: 'tracabilite', label: 'Traçabilité' },
 ];
 
 // ============================================
@@ -120,8 +120,8 @@ function scoreBg(score: number | null): string {
 }
 
 function scoreLabel(score: number | null): string {
-  if (score == null) return 'Non calcul\u00e9';
-  if (score >= 70) return 'Bonne sant\u00e9';
+  if (score == null) return 'Non calculé';
+  if (score >= 70) return 'Bonne santé';
   if (score >= 40) return 'Vigilance';
   return 'Critique';
 }
@@ -228,7 +228,7 @@ export function AnalysisDetailPage({ id }: Props) {
       {isComputing && (
         <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
           <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-          <span>Calcul en cours... Les donn\u00e9es se mettront \u00e0 jour automatiquement.</span>
+          <span>Calcul en cours... Les données se mettront à jour automatiquement.</span>
         </div>
       )}
 
@@ -369,7 +369,7 @@ function TabSynthese({
   return (
     <div className="space-y-6">
       {/* Health score card */}
-      <SectionCard title="Score de sant\u00e9 financière">
+      <SectionCard title="Score de santé financière">
         <div className="flex flex-col items-center gap-3 py-4">
           <div className={cn('text-5xl font-bold tabular-nums', scoreColor(healthScore))}>
             {healthScore != null ? healthScore : '—'}
@@ -420,7 +420,7 @@ function TabSynthese({
       {directorSummary && (
         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-5 space-y-2">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">
-            Synth\u00e8se dirigeant
+            Synthèse dirigeant
           </h3>
           <p className="text-sm leading-relaxed">{directorSummary.content}</p>
         </div>
@@ -431,7 +431,7 @@ function TabSynthese({
         {regularInsights.length === 0 ? (
           <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>G\u00e9n\u00e9ration des insights en cours...</span>
+            <span>Génération des insights en cours...</span>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -468,7 +468,7 @@ function TabSynthese({
 const SOURCE_LABELS: Record<RatioSource, string> = {
   bilan: 'Bilan',
   nxt: 'NXT',
-  computed: 'Calcul\u00e9',
+  computed: 'Calculé',
 };
 
 function TabRatios({ ratios }: { ratios: FinancialRatio[] }) {
@@ -503,7 +503,7 @@ function TabRatios({ ratios }: { ratios: FinancialRatio[] }) {
                   <th className="text-left px-4 py-2.5 font-medium">Indicateur</th>
                   <th className="text-right px-4 py-2.5 font-medium">Valeur</th>
                   <th className="text-right px-4 py-2.5 font-medium">N-1</th>
-                  <th className="text-right px-4 py-2.5 font-medium">\u00c9cart</th>
+                  <th className="text-right px-4 py-2.5 font-medium">Écart</th>
                   <th className="text-center px-4 py-2.5 font-medium">Statut</th>
                   <th className="text-right px-4 py-2.5 font-medium">Benchmark</th>
                 </tr>
@@ -582,7 +582,7 @@ function TabChargesRevenus({
   if (items.length === 0) {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
-        Aucune donn\u00e9e de bilan disponible pour cette analyse.
+        Aucune donnée de bilan disponible pour cette analyse.
       </div>
     );
   }
@@ -608,7 +608,7 @@ function ItemTable({ title, items }: { title: string; items: BalanceSheetItem[] 
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="text-left px-4 py-2.5 font-medium">Section</th>
-              <th className="text-left px-4 py-2.5 font-medium">Cat\u00e9gorie</th>
+              <th className="text-left px-4 py-2.5 font-medium">Catégorie</th>
               <th className="text-right px-4 py-2.5 font-medium">Montant</th>
               <th className="text-right px-4 py-2.5 font-medium">N-1</th>
             </tr>
@@ -645,7 +645,7 @@ function TabComparaison({ ratios }: { ratios: FinancialRatio[] }) {
   if (withNMinus1.length === 0) {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
-        Aucune donn\u00e9e N-1 disponible pour la comparaison.
+        Aucune donnée N-1 disponible pour la comparaison.
       </div>
     );
   }
@@ -658,7 +658,7 @@ function TabComparaison({ ratios }: { ratios: FinancialRatio[] }) {
             <th className="text-left px-4 py-2.5 font-medium">Indicateur</th>
             <th className="text-right px-4 py-2.5 font-medium">N</th>
             <th className="text-right px-4 py-2.5 font-medium">N-1</th>
-            <th className="text-right px-4 py-2.5 font-medium">\u00c9volution (%)</th>
+            <th className="text-right px-4 py-2.5 font-medium">Évolution (%)</th>
             <th className="text-center px-4 py-2.5 font-medium">Tendance</th>
           </tr>
         </thead>
@@ -726,12 +726,12 @@ function TabTracabilite({
   return (
     <div className="space-y-6">
       {/* Analysis metadata */}
-      <SectionCard title="M\u00e9tadonn\u00e9es de l'analyse">
+      <SectionCard title="Métadonnées de l'analyse">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetaItem icon={Hash} label="ID" value={analysis.id} mono />
           <MetaItem icon={Layers} label="Version" value={String(analysis.version_number)} />
           <MetaItem icon={Cpu} label="Niveau d'analyse" value={ANALYSIS_LEVEL_LABELS[analysis.analysis_level as keyof typeof ANALYSIS_LEVEL_LABELS] ?? analysis.analysis_level} />
-          <MetaItem icon={Calendar} label="Cr\u00e9\u00e9 le" value={formatDate(analysis.created_at)} />
+          <MetaItem icon={Calendar} label="Créé le" value={formatDate(analysis.created_at)} />
           <MetaItem icon={FileText} label="Statut" value={ANALYSIS_STATUS_LABELS[analysis.status as keyof typeof ANALYSIS_STATUS_LABELS] ?? analysis.status} />
           {analysis.balance_sheet_id && (
             <MetaItem icon={FileText} label="Bilan source" value={analysis.balance_sheet_id} mono />
@@ -754,7 +754,7 @@ function TabTracabilite({
 
       {/* Input hashes */}
       {inputHashes.length > 0 && (
-        <SectionCard title="Hashes d'entr\u00e9e">
+        <SectionCard title="Hashes d'entrée">
           <div className="space-y-2 text-sm">
             {inputHashes.map((h) => (
               <div key={h} className="font-mono text-xs text-muted-foreground break-all">{h}</div>
@@ -765,7 +765,7 @@ function TabTracabilite({
 
       {/* LLM generation info */}
       {insights.length > 0 && (
-        <SectionCard title="G\u00e9n\u00e9rations LLM">
+        <SectionCard title="Générations LLM">
           <div className="rounded-lg border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

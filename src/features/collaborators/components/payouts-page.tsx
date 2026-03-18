@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { LoadingState } from '@/components/shared/loading-state';
 import { ErrorState } from '@/components/shared/error-state';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { FilterBar, } from '@/components/shared/filter-bar';
 import { SelectFilter } from '@/components/shared/period-filter';
 import { DataTable } from '@/components/shared/data-table';
@@ -32,6 +33,7 @@ export function PayoutsPage() {
 
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [collabFilter, setCollabFilter] = useState<string>('all');
+  const [confirmPayout, setConfirmPayout] = useState<{ splitId: string; status: PayoutStatus } | null>(null);
 
   const { data: collaborators } = useActiveCollaborators();
   const payoutMutation = useUpdatePayoutStatus();
@@ -125,15 +127,15 @@ export function PayoutsPage() {
           <div className="flex gap-1 justify-end">
             {s === 'pending' && (
               <>
-                <Button size="sm" className="h-7 text-xs" onClick={() => handleStatusChange(row.original.id, 'paid')}>Reversé</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleStatusChange(row.original.id, 'cancelled')}>Annuler</Button>
+                <Button size="sm" className="h-7 text-xs" onClick={() => setConfirmPayout({ splitId: row.original.id, status: 'paid' })}>Reversé</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setConfirmPayout({ splitId: row.original.id, status: 'cancelled' })}>Annuler</Button>
               </>
             )}
             {s === 'paid' && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleStatusChange(row.original.id, 'pending')}>En attente</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setConfirmPayout({ splitId: row.original.id, status: 'pending' })}>En attente</Button>
             )}
             {s === 'cancelled' && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleStatusChange(row.original.id, 'pending')}>Réactiver</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setConfirmPayout({ splitId: row.original.id, status: 'pending' })}>Réactiver</Button>
             )}
           </div>
         );
@@ -215,6 +217,41 @@ export function PayoutsPage() {
       ) : (
         <DataTable columns={columns} data={data} searchable={false} />
       )}
+
+      {/* Confirmation dialog for payout status changes */}
+      <ConfirmDialog
+        open={confirmPayout !== null}
+        onOpenChange={(open) => { if (!open) setConfirmPayout(null); }}
+        title={
+          confirmPayout?.status === 'paid'
+            ? 'Confirmer le reversement'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Annuler le reversement'
+              : 'Remettre en attente'
+        }
+        description={
+          confirmPayout?.status === 'paid'
+            ? 'Ce reversement sera marqué comme effectué. Confirmez-vous que le virement ou le paiement a bien été réalisé ?'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Ce reversement sera annulé. Cette action est réversible.'
+              : 'Ce reversement sera remis en attente de paiement.'
+        }
+        confirmLabel={
+          confirmPayout?.status === 'paid'
+            ? 'Confirmer le reversement'
+            : confirmPayout?.status === 'cancelled'
+              ? 'Annuler le reversement'
+              : 'Remettre en attente'
+        }
+        variant={confirmPayout?.status === 'cancelled' ? 'destructive' : 'default'}
+        isLoading={payoutMutation.isPending}
+        onConfirm={() => {
+          if (confirmPayout) {
+            handleStatusChange(confirmPayout.splitId, confirmPayout.status);
+            setConfirmPayout(null);
+          }
+        }}
+      />
     </div>
   );
 }
