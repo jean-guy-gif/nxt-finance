@@ -75,7 +75,7 @@ export function StepComplete({ balanceSheetId, onReset }: StepCompleteProps) {
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <Button
           onClick={handleLaunchAnalysis}
-          disabled={createAnalysis.isPending}
+          disabled={createAnalysis.isPending || !balanceSheet}
           className="min-w-[200px]"
         >
           <BarChart3 className="mr-2 h-4 w-4" />

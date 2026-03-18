@@ -93,7 +93,11 @@ export function useInsights(analysisId: string | null) {
     enabled: !!analysisId,
     refetchInterval: (query) => {
       const data = query.state.data;
-      return data && data.length >= 5 ? false : 5000;
+      // Stop polling once we have insights OR after ~30s (6 polls × 5s)
+      if (data && data.length >= 3) return false;
+      const fetchCount = query.state.dataUpdateCount;
+      if (fetchCount >= 6) return false; // Stop after 30s
+      return 5000;
     },
   });
 }

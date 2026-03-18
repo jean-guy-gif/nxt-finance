@@ -249,21 +249,26 @@ export async function computeNxtRatios(
   // En l'absence d'un champ collected_at dédié, cette approximation
   // donne le délai entre la date de facture et le dernier update du statut.
   // ================================================================
+  const MAX_DELAI_JOURS = 90; // Cap pour données démo (updated_at peut être décalé)
   const collectedRevenues = revenueRows.filter((r) => r.status === 'collected' && r.updated_at);
   if (collectedRevenues.length > 0) {
     let totalDays = 0;
+    let validCount = 0;
     for (const r of collectedRevenues) {
       const dateFacture = new Date(r.date).getTime();
       const dateEncaissement = new Date(r.updated_at).getTime();
-      const days = (dateEncaissement - dateFacture) / (1000 * 60 * 60 * 24);
-      totalDays += Math.max(0, days); // Guard against negative
+      const days = Math.min(MAX_DELAI_JOURS, Math.max(0, (dateEncaissement - dateFacture) / (1000 * 60 * 60 * 24)));
+      totalDays += days;
+      validCount++;
     }
-    ratios.push({
-      key: 'delai_encaissement_moyen',
-      value: round2(totalDays / collectedRevenues.length),
-      formulaKey: 'avg(updated_at - date) for collected revenues, in days',
-      source: 'nxt',
-    });
+    if (validCount > 0) {
+      ratios.push({
+        key: 'delai_encaissement_moyen',
+        value: round2(totalDays / validCount),
+        formulaKey: 'avg(min(90, updated_at - date)) for collected revenues, in days',
+        source: 'nxt',
+      });
+    }
   }
 
   // ================================================================

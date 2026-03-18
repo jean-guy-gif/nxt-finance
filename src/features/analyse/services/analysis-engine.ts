@@ -254,20 +254,11 @@ async function triggerAnalysisComputation(
       })
       .eq('id', analysisId);
 
-    // k) Compute temporal analysis (non-blocking — graceful degradation)
-    let temporalData = null;
-    try {
-      temporalData = await computeTemporalAnalysis(supabase, agencyId, fiscalYear);
-    } catch (err) {
-      console.warn('[analysis-engine] Temporal analysis failed, skipping:', err);
-    }
-
-    // l) Update analysis status to 'ready' + persist temporal data
+    // k) Update analysis status to 'ready' FIRST (before temporal + LLM)
     await supabase
       .from('financial_analyses')
       .update({
         status: 'ready',
-        temporal_data: temporalData,
         updated_at: new Date().toISOString(),
       })
       .eq('id', analysisId);
@@ -275,18 +266,38 @@ async function triggerAnalysisComputation(
     // l) Progress 70%
     await updateJobProgress(supabase, jobId, 70);
 
-    // m) Generate LLM insights (async, non-blocking for analysis status)
-    await generateInsights(
-      supabase,
-      analysisId,
-      ratioRecords,
-      score,
-      agencyId,
-      fiscalYear,
-      temporalData
-    );
+    // m) Compute temporal analysis (non-blocking — graceful degradation)
+    let temporalData = null;
+    try {
+      temporalData = await computeTemporalAnalysis(supabase, agencyId, fiscalYear);
+      // Persist temporal data separately (column may not exist yet)
+      await supabase
+        .from('financial_analyses')
+        .update({
+          temporal_data: temporalData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', analysisId);
+    } catch (err) {
+      console.warn('[analysis-engine] Temporal analysis failed, skipping:', err);
+    }
 
-    // n) Complete job
+    // n) Generate LLM insights (non-blocking — analysis stays ready even if LLM fails)
+    try {
+      await generateInsights(
+        supabase,
+        analysisId,
+        ratioRecords,
+        score,
+        agencyId,
+        fiscalYear,
+        temporalData
+      );
+    } catch (err) {
+      console.warn('[analysis-engine] LLM insights generation failed, skipping:', err);
+    }
+
+    // o) Complete job
     await completeJob(supabase, jobId);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

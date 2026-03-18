@@ -120,6 +120,22 @@ export function computeBilanRatios(items: BalanceSheetItem[]): RatioResult[] {
     source: 'bilan',
   });
 
+  // B9: Produits d'exploitation (for merged ratios cross-check)
+  ratios.push({
+    key: 'produits_exploitation_bilan',
+    value: round2(prodExpl),
+    formulaKey: 'sum(items.amount) section=produits_exploitation',
+    source: 'bilan',
+  });
+
+  // B10: Total charges bilan (for merged ratios cross-check)
+  ratios.push({
+    key: 'total_charges_bilan',
+    value: round2(totalCharges),
+    formulaKey: 'sum(charges_exploitation + charges_financieres + charges_exceptionnelles)',
+    source: 'bilan',
+  });
+
   return ratios;
 }
 

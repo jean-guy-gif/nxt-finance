@@ -456,14 +456,18 @@ export function AnalyseMainPage() {
 // ---------------------------------------------------------------------------
 
 function DirectorSummaryBlock({ analysisId }: { analysisId: string }) {
-  const { data: insights } = useInsights(analysisId);
+  const { data: insights, isFetching } = useInsights(analysisId);
   const directorSummary = insights?.find((i) => i.category === 'director_summary');
 
   if (!directorSummary) {
+    // Still loading or LLM unavailable
+    const message = isFetching
+      ? 'Synthèse dirigeant en cours de rédaction...'
+      : 'Synthèse dirigeant non disponible — consultez les ratios pour le détail.';
     return (
       <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="py-4 text-sm text-muted-foreground">
-          Synthèse dirigeant en cours de rédaction...
+        <CardContent className="py-4 text-sm text-muted-foreground italic">
+          {message}
         </CardContent>
       </Card>
     );

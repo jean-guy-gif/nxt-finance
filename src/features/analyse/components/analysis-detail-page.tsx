@@ -67,6 +67,8 @@ const RATIO_KEY_LABELS: Record<string, string> = {
   ca_par_collaborateur: 'CA par collaborateur',
   marge_operationnelle_nxt: 'Marge opérationnelle',
   couverture_charges: 'Couverture charges',
+  produits_exploitation_bilan: "Produits d'exploitation (bilan)",
+  total_charges_bilan: 'Charges totales (bilan)',
   // Operational ratios
   nb_transactions_total: 'Nombre de transactions',
   nb_transactions_transaction: 'Transactions (vente)',
@@ -197,6 +199,7 @@ const MONETARY_RATIOS = new Set([
   'resultat_net', 'ca_total_ht', 'charges_total_ttc', 'capacite_autofinancement',
   'ca_par_collaborateur', 'panier_moyen_global', 'panier_moyen_transaction',
   'panier_moyen_gestion', 'panier_moyen_location', 'point_mort_mensuel',
+  'produits_exploitation_bilan', 'total_charges_bilan',
 ]);
 
 const PERCENTAGE_RATIOS = new Set([
@@ -260,7 +263,7 @@ interface Props {
 export function AnalysisDetailPage({ id }: Props) {
   const { data: analysis, isLoading, isError, refetch } = useAnalysis(id);
   const { data: ratios } = useRatios(id);
-  const { data: insights } = useInsights(id);
+  const { data: insights, isFetching: insightsFetching } = useInsights(id);
 
   const [activeTab, setActiveTab] = useState<TabKey>('synthese');
 
@@ -337,6 +340,7 @@ export function AnalysisDetailPage({ id }: Props) {
           healthScore={analysis.health_score}
           insights={insights ?? analysis.insights ?? []}
           ratios={ratios ?? analysis.ratios ?? []}
+          insightsLoading={insightsFetching && (insights ?? []).length === 0}
         />
       )}
       {activeTab === 'performance' && (
@@ -371,12 +375,19 @@ export function AnalysisDetailPage({ id }: Props) {
 // Tab: Synthese
 // ============================================
 
-function InsightPlaceholder({ label }: { label: string }) {
+function InsightPlaceholder({ loading }: { loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-3 py-4 justify-center text-muted-foreground text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Analyse en cours de rédaction...</span>
+      </div>
+    );
+  }
   return (
-    <div className="flex items-center gap-3 py-4 justify-center text-muted-foreground text-sm">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      <span>{label}</span>
-    </div>
+    <p className="text-sm text-muted-foreground py-3 italic">
+      Synthèse non disponible — le service de rédaction n&apos;a pas pu être contacté.
+    </p>
   );
 }
 
@@ -408,10 +419,12 @@ function TabSynthese({
   healthScore,
   insights,
   ratios,
+  insightsLoading = false,
 }: {
   healthScore: number | null;
   insights: FinancialInsight[];
   ratios: FinancialRatio[];
+  insightsLoading?: boolean;
 }) {
   // Compute category scores from ratios
   const categoryScores = useMemo(() => {
@@ -514,7 +527,7 @@ function TabSynthese({
         {directorSummary ? (
           <p className="text-sm leading-relaxed whitespace-pre-line">{directorSummary.content}</p>
         ) : (
-          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+          <InsightPlaceholder loading={insightsLoading} />
         )}
       </div>
 
@@ -525,7 +538,7 @@ function TabSynthese({
           Ce qui va bien
         </h3>
         {!hasAnyInsight ? (
-          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+          <InsightPlaceholder loading={insightsLoading} />
         ) : strengths.length > 0 ? (
           <div className="space-y-3">
             {strengths.map((s) => (
@@ -544,7 +557,7 @@ function TabSynthese({
           Ce qui ne va pas
         </h3>
         {!hasAnyInsight ? (
-          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+          <InsightPlaceholder loading={insightsLoading} />
         ) : weaknesses.length > 0 ? (
           <div className="space-y-3">
             {weaknesses.map((w) => (
@@ -563,7 +576,7 @@ function TabSynthese({
           À surveiller
         </h3>
         {!hasAnyInsight ? (
-          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+          <InsightPlaceholder loading={insightsLoading} />
         ) : anomalies.length > 0 ? (
           <div className="space-y-3">
             {anomalies.map((a) => (
@@ -582,7 +595,7 @@ function TabSynthese({
           Que faire maintenant ?
         </h3>
         {!hasAnyInsight ? (
-          <InsightPlaceholder label="Analyse en cours de rédaction..." />
+          <InsightPlaceholder loading={insightsLoading} />
         ) : recommendations.length > 0 ? (
           <div className="space-y-3">
             {recommendations.map((r) => (
