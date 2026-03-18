@@ -44,15 +44,9 @@ export interface DashboardVatSnapshot {
 export async function fetchDashboardKpis(
   supabase: SupabaseClient,
   agencyId: string,
-  month: number,
-  year: number
+  startDate: string,
+  endDate: string
 ): Promise<DashboardKpis> {
-  // Date range for the month
-  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-  const endMonth = month === 12 ? 1 : month + 1;
-  const endYear = month === 12 ? year + 1 : year;
-  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
-
   // Revenues for the period
   const { data: revenues } = await supabase
     .from('revenues')
@@ -114,14 +108,9 @@ export async function fetchDashboardKpis(
 export async function fetchDashboardAdminStats(
   supabase: SupabaseClient,
   agencyId: string,
-  month: number,
-  year: number
+  startDate: string,
+  endDate: string
 ): Promise<DashboardAdminStats> {
-  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-  const endMonth = month === 12 ? 1 : month + 1;
-  const endYear = month === 12 ? year + 1 : year;
-  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
-
   // Expenses of the period
   const { data: periodExpenses } = await supabase
     .from('expenses')
@@ -173,40 +162,76 @@ export async function fetchDashboardAdminStats(
 }
 
 /**
- * Fetch the VAT snapshot for the given period (if it exists).
+ * Fetch the VAT snapshot for the given period(s).
+ * For multi-month ranges (quarterly/yearly), sums VAT across all covered accounting periods.
  */
 export async function fetchDashboardVat(
   supabase: SupabaseClient,
   agencyId: string,
-  month: number,
-  year: number
+  months: Array<{ month: number; year: number }>
 ): Promise<DashboardVatSnapshot> {
+  if (months.length === 0) {
+    return { vatCollected: null, vatDeductible: null, vatBalance: null, snapshotAt: null, periodStatus: null, periodId: null };
+  }
+
+  // Single month: original behavior (return period details)
+  if (months.length === 1) {
+    const { month, year } = months[0];
+    const { data } = await supabase
+      .from('accounting_periods')
+      .select('id, vat_collected, vat_deductible, vat_balance, vat_snapshot_at, status')
+      .eq('agency_id', agencyId)
+      .eq('month', month)
+      .eq('year', year)
+      .maybeSingle();
+
+    if (!data) {
+      return { vatCollected: null, vatDeductible: null, vatBalance: null, snapshotAt: null, periodStatus: null, periodId: null };
+    }
+
+    return {
+      vatCollected: data.vat_collected ? Number(data.vat_collected) : null,
+      vatDeductible: data.vat_deductible ? Number(data.vat_deductible) : null,
+      vatBalance: data.vat_balance ? Number(data.vat_balance) : null,
+      snapshotAt: data.vat_snapshot_at,
+      periodStatus: data.status,
+      periodId: data.id,
+    };
+  }
+
+  // Multi-month: aggregate VAT across all matching accounting periods
+  // Build OR filter for (month, year) pairs
+  const orFilter = months
+    .map(({ month, year }) => `and(month.eq.${month},year.eq.${year})`)
+    .join(',');
+
   const { data } = await supabase
     .from('accounting_periods')
     .select('id, vat_collected, vat_deductible, vat_balance, vat_snapshot_at, status')
     .eq('agency_id', agencyId)
-    .eq('month', month)
-    .eq('year', year)
-    .maybeSingle();
+    .or(orFilter);
 
-  if (!data) {
-    return {
-      vatCollected: null,
-      vatDeductible: null,
-      vatBalance: null,
-      snapshotAt: null,
-      periodStatus: null,
-      periodId: null,
-    };
+  const rows = data ?? [];
+  if (rows.length === 0) {
+    return { vatCollected: null, vatDeductible: null, vatBalance: null, snapshotAt: null, periodStatus: null, periodId: null };
   }
 
+  const vatCollected = rows.reduce((sum, r) => sum + (r.vat_collected ? Number(r.vat_collected) : 0), 0);
+  const vatDeductible = rows.reduce((sum, r) => sum + (r.vat_deductible ? Number(r.vat_deductible) : 0), 0);
+  const vatBalance = vatCollected - vatDeductible;
+
+  // Use the latest snapshot timestamp and first period id for reference
+  const latestSnapshot = rows
+    .filter((r) => r.vat_snapshot_at)
+    .sort((a, b) => (b.vat_snapshot_at ?? '').localeCompare(a.vat_snapshot_at ?? ''));
+
   return {
-    vatCollected: data.vat_collected ? Number(data.vat_collected) : null,
-    vatDeductible: data.vat_deductible ? Number(data.vat_deductible) : null,
-    vatBalance: data.vat_balance ? Number(data.vat_balance) : null,
-    snapshotAt: data.vat_snapshot_at,
-    periodStatus: data.status,
-    periodId: data.id,
+    vatCollected,
+    vatDeductible,
+    vatBalance,
+    snapshotAt: latestSnapshot.length > 0 ? latestSnapshot[0].vat_snapshot_at : null,
+    periodStatus: null, // Aggregated — no single period status
+    periodId: null,     // Aggregated — no single period id
   };
 }
 

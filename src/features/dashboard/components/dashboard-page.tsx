@@ -497,6 +497,9 @@ function VatSnapshotBlock({
   vat: Awaited<ReturnType<typeof import('../services/dashboard-service').fetchDashboardVat>> | undefined;
   isLoading: boolean;
 }) {
+  const periodView = useUiStore((s) => s.periodView);
+  const periodLabel = periodView === 'monthly' ? 'ce mois' : periodView === 'quarterly' ? 'ce trimestre' : 'cette année';
+
   if (isLoading) {
     return (
       <div className="p-3 rounded-lg border bg-card">
@@ -505,18 +508,20 @@ function VatSnapshotBlock({
     );
   }
 
-  // No period exists yet
-  if (!vat || vat.periodId === null) {
+  // No data at all (no periods found, or all values are null)
+  const hasData = vat && (vat.vatBalance !== null || vat.periodId !== null);
+
+  if (!hasData) {
     return (
       <div className="p-3 rounded-lg border bg-card">
         <p className="text-sm text-muted-foreground">
-          Aucune période comptable pour ce mois.
+          Aucune période comptable pour {periodLabel}.
         </p>
       </div>
     );
   }
 
-  // Period exists but no VAT snapshot yet
+  // Period(s) exist but no VAT snapshot yet
   if (vat.vatBalance === null) {
     return (
       <div className="p-3 rounded-lg border bg-card">
@@ -538,11 +543,13 @@ function VatSnapshotBlock({
     );
   }
 
+  const isAggregated = vat.periodId === null;
+
   return (
     <div className="p-3 rounded-lg border bg-card">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm text-muted-foreground">TVA estimée de la période</p>
-        <StatusBadge status="to_verify" label="Estimation" />
+        <StatusBadge status="to_verify" label={isAggregated ? 'Cumul estimé' : 'Estimation'} />
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div>

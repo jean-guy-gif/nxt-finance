@@ -14,6 +14,9 @@ export interface RevenueFilters {
   search?: string;
   month?: number;
   year?: number;
+  /** Date range (takes precedence over month/year) */
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface CreateRevenueInput {
@@ -60,8 +63,10 @@ export async function fetchRevenues(
     .eq('agency_id', agencyId)
     .order('date', { ascending: false });
 
-  // Date range filter
-  if (filters.month && filters.year) {
+  // Date range filter (startDate/endDate takes precedence over month/year)
+  if (filters.startDate && filters.endDate) {
+    query = query.gte('date', filters.startDate).lt('date', filters.endDate);
+  } else if (filters.month && filters.year) {
     const startDate = `${filters.year}-${String(filters.month).padStart(2, '0')}-01`;
     const endMonth = filters.month === 12 ? 1 : filters.month + 1;
     const endYear = filters.month === 12 ? filters.year + 1 : filters.year;

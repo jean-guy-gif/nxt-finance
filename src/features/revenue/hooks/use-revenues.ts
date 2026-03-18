@@ -6,6 +6,7 @@ import { useAgencyStore } from '@/stores/agency-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { writeAuditLog } from '@/lib/audit';
+import { getDateRange } from '@/lib/period-utils';
 import {
   fetchRevenues,
   fetchRevenue,
@@ -22,16 +23,18 @@ function useRevenueKeys() {
   const agencyId = useAgencyStore((s) => s.activeAgency?.id);
   const month = useUiStore((s) => s.selectedMonth);
   const year = useUiStore((s) => s.selectedYear);
-  return { agencyId, month, year };
+  const periodView = useUiStore((s) => s.periodView);
+  return { agencyId, month, year, periodView };
 }
 
-export function useRevenues(filters: Omit<RevenueFilters, 'month' | 'year'> = {}) {
-  const { agencyId, month, year } = useRevenueKeys();
+export function useRevenues(filters: Omit<RevenueFilters, 'month' | 'year' | 'startDate' | 'endDate'> = {}) {
+  const { agencyId, month, year, periodView } = useRevenueKeys();
+  const { startDate, endDate } = getDateRange(periodView, month, year);
   return useQuery({
-    queryKey: ['revenues', agencyId, month, year, filters],
+    queryKey: ['revenues', agencyId, periodView, month, year, filters],
     queryFn: () => {
       const supabase = createClient();
-      return fetchRevenues(supabase, agencyId!, { ...filters, month, year });
+      return fetchRevenues(supabase, agencyId!, { ...filters, startDate, endDate });
     },
     enabled: !!agencyId,
   });

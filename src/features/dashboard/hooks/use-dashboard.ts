@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useAgencyStore } from '@/stores/agency-store';
 import { useUiStore } from '@/stores/ui-store';
+import { getDateRange, getMonthsInRange } from '@/lib/period-utils';
 import {
   fetchDashboardKpis,
   fetchDashboardAdminStats,
@@ -21,40 +22,43 @@ function useDashboardKeys() {
   const agencyId = useAgencyStore((s) => s.activeAgency?.id);
   const month = useUiStore((s) => s.selectedMonth);
   const year = useUiStore((s) => s.selectedYear);
-  return { agencyId, month, year };
+  const periodView = useUiStore((s) => s.periodView);
+  const { startDate, endDate } = getDateRange(periodView, month, year);
+  const months = getMonthsInRange(startDate, endDate);
+  return { agencyId, month, year, periodView, startDate, endDate, months };
 }
 
 export function useDashboardKpis() {
-  const { agencyId, month, year } = useDashboardKeys();
+  const { agencyId, periodView, month, year, startDate, endDate } = useDashboardKeys();
   return useQuery({
-    queryKey: ['dashboard', 'kpis', agencyId, month, year],
+    queryKey: ['dashboard', 'kpis', agencyId, periodView, month, year],
     queryFn: () => {
       const supabase = createClient();
-      return fetchDashboardKpis(supabase, agencyId!, month, year);
+      return fetchDashboardKpis(supabase, agencyId!, startDate, endDate);
     },
     enabled: !!agencyId,
   });
 }
 
 export function useDashboardAdminStats() {
-  const { agencyId, month, year } = useDashboardKeys();
+  const { agencyId, periodView, month, year, startDate, endDate } = useDashboardKeys();
   return useQuery({
-    queryKey: ['dashboard', 'admin', agencyId, month, year],
+    queryKey: ['dashboard', 'admin', agencyId, periodView, month, year],
     queryFn: () => {
       const supabase = createClient();
-      return fetchDashboardAdminStats(supabase, agencyId!, month, year);
+      return fetchDashboardAdminStats(supabase, agencyId!, startDate, endDate);
     },
     enabled: !!agencyId,
   });
 }
 
 export function useDashboardVat() {
-  const { agencyId, month, year } = useDashboardKeys();
+  const { agencyId, periodView, month, year, months } = useDashboardKeys();
   return useQuery({
-    queryKey: ['dashboard', 'vat', agencyId, month, year],
+    queryKey: ['dashboard', 'vat', agencyId, periodView, month, year],
     queryFn: () => {
       const supabase = createClient();
-      return fetchDashboardVat(supabase, agencyId!, month, year);
+      return fetchDashboardVat(supabase, agencyId!, months);
     },
     enabled: !!agencyId,
   });
