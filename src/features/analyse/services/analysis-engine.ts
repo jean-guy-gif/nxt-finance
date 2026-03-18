@@ -12,6 +12,7 @@ import {
   computeNxtRatios,
   computeMergedRatios,
   computeHealthScore,
+  computeTemporalAnalysis,
 } from './ratio-engine';
 import {
   createJob,
@@ -252,11 +253,20 @@ async function triggerAnalysisComputation(
       })
       .eq('id', analysisId);
 
-    // k) Update analysis status to 'ready'
+    // k) Compute temporal analysis (non-blocking — graceful degradation)
+    let temporalData = null;
+    try {
+      temporalData = await computeTemporalAnalysis(supabase, agencyId, fiscalYear);
+    } catch (err) {
+      console.warn('[analysis-engine] Temporal analysis failed, skipping:', err);
+    }
+
+    // l) Update analysis status to 'ready' + persist temporal data
     await supabase
       .from('financial_analyses')
       .update({
         status: 'ready',
+        temporal_data: temporalData,
         updated_at: new Date().toISOString(),
       })
       .eq('id', analysisId);

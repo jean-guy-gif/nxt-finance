@@ -8,6 +8,16 @@ import {
   Shield, Wallet, Droplets, Users, Receipt,
   Hash, Calendar, Layers, FileText, Cpu,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
 import { BackButton } from '@/components/shared/back-button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { SectionCard } from '@/components/shared/section-card';
@@ -27,6 +37,7 @@ import type {
   FinancialRatio,
   FinancialInsight,
   BalanceSheetItem,
+  TemporalAnalysis,
 } from '@/types/models';
 import type {
   AnalysisStatus,
@@ -118,14 +129,15 @@ const INSIGHT_CONFIG: Record<InsightType, { border: string; icon: typeof CheckCi
 // Tabs
 // ============================================
 
-type TabKey = 'synthese' | 'performance' | 'ratios' | 'charges' | 'comparaison' | 'tracabilite';
+type TabKey = 'synthese' | 'performance' | 'tendances' | 'ratios' | 'charges' | 'comparaison' | 'tracabilite';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'synthese', label: 'Synthèse' },
-  { key: 'performance', label: 'Performance opérationnelle' },
+  { key: 'performance', label: 'Performance' },
+  { key: 'tendances', label: 'Tendances' },
   { key: 'ratios', label: 'Ratios' },
   { key: 'charges', label: 'Charges & Revenus' },
-  { key: 'comparaison', label: 'Comparaison N-1' },
+  { key: 'comparaison', label: 'N vs N-1' },
   { key: 'tracabilite', label: 'Traçabilité' },
 ];
 
@@ -329,6 +341,9 @@ export function AnalysisDetailPage({ id }: Props) {
       )}
       {activeTab === 'performance' && (
         <TabPerformance ratios={ratios ?? analysis.ratios ?? []} />
+      )}
+      {activeTab === 'tendances' && (
+        <TabTendances temporalData={analysis.temporal_data ?? null} />
       )}
       {activeTab === 'ratios' && (
         <TabRatios ratios={ratios ?? analysis.ratios ?? []} />
@@ -605,6 +620,206 @@ function TabPerformance({ ratios }: { ratios: FinancialRatio[] }) {
           <div className="grid grid-cols-2 gap-3">
             {renderKpi('coherence_ca')}
             {renderKpi('couverture_charges_reelles')}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// Tab: Tendances
+// ============================================
+
+const MONTH_SHORT = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+function TrendArrow({ direction, pct }: { direction: 'up' | 'stable' | 'down'; pct: number }) {
+  if (direction === 'up') {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+        <TrendingUp className="h-4 w-4" /> +{pct.toFixed(1)}%
+      </span>
+    );
+  }
+  if (direction === 'down') {
+    return (
+      <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+        <TrendingDown className="h-4 w-4" /> {pct.toFixed(1)}%
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-muted-foreground font-medium">
+      <Minus className="h-4 w-4" /> {pct.toFixed(1)}%
+    </span>
+  );
+}
+
+function TabTendances({ temporalData }: { temporalData: TemporalAnalysis | null }) {
+  if (!temporalData) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground">
+        Aucune donnée temporelle disponible. Lancez une analyse pour calculer les tendances.
+      </div>
+    );
+  }
+
+  const { monthly_series, monthly_comparison, trends, projection, seasonality } = temporalData;
+  const hasEnoughData = monthly_series.filter((p) => p.ca > 0 || p.charges > 0).length >= 3;
+
+  // Chart data
+  const chartData = monthly_series.map((p) => ({
+    label: `${MONTH_SHORT[p.month]} ${String(p.year).slice(2)}`,
+    CA: p.ca,
+    Charges: p.charges,
+    Marge: p.marge,
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* 12-month chart */}
+      <SectionCard title="Évolution sur 12 mois">
+        {chartData.length > 0 ? (
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} tickFormatter={(v) => formatCurrency(v)} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Legend />
+                <Line type="monotone" dataKey="CA" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Charges" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Marge" stroke="#22c55e" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4 text-center">Aucune donnée mensuelle</p>
+        )}
+      </SectionCard>
+
+      {/* 3-month trends */}
+      <SectionCard title="Tendance 3 mois glissants">
+        {!hasEnoughData || !trends ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            Historique insuffisant (minimum 3 mois requis)
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Chiffre d&apos;affaires</p>
+              <TrendArrow direction={trends.ca.direction} pct={trends.ca.variation_pct} />
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Charges</p>
+              <TrendArrow direction={trends.charges.direction} pct={trends.charges.variation_pct} />
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Marge</p>
+              <TrendArrow direction={trends.marge.direction} pct={trends.marge.variation_pct} />
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Transactions</p>
+              <TrendArrow direction={trends.nb_transactions.direction} pct={trends.nb_transactions.variation_pct} />
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* End-of-year projection */}
+      {projection && (
+        <SectionCard title="Projection fin d'année">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">CA cumulé</p>
+              <p className="text-lg font-bold">{formatCurrency(projection.ca_cumul)}</p>
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Mois écoulés</p>
+              <p className="text-lg font-bold">{projection.months_elapsed} / 12</p>
+            </div>
+            <div className="rounded-lg border bg-primary/5 p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">CA projeté (linéaire)</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(projection.ca_projected)}</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>Avancement</span>
+              <span>{Math.round((projection.months_elapsed / 12) * 100)}%</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${Math.round((projection.months_elapsed / 12) * 100)}%` }}
+              />
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* N vs N-1 comparison */}
+      {monthly_comparison.length > 0 && (
+        <SectionCard title="Comparaison mensuelle N / N-1">
+          <div className="rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left px-4 py-2.5 font-medium">Mois</th>
+                  <th className="text-right px-4 py-2.5 font-medium">CA N</th>
+                  <th className="text-right px-4 py-2.5 font-medium">CA N-1</th>
+                  <th className="text-right px-4 py-2.5 font-medium">Variation</th>
+                  <th className="text-right px-4 py-2.5 font-medium">Écart</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {monthly_comparison.map((c) => (
+                  <tr key={c.month} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-2.5 font-medium">{MONTH_SHORT[c.month]}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(c.ca_n)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{formatCurrency(c.ca_n1)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      <span className={c.variation_pct >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                        {c.variation_pct > 0 ? '+' : ''}{c.variation_pct.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      <span className={c.variation_abs >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                        {c.variation_abs >= 0 ? '+' : ''}{formatCurrency(c.variation_abs)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Seasonality */}
+      {seasonality.length > 0 && seasonality.some((s) => s.performance_vs_expected !== null) && (
+        <SectionCard title="Performance saisonnière">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+            {seasonality.map((s) => {
+              if (s.performance_vs_expected === null) return null;
+              const perf = s.performance_vs_expected;
+              const color = perf >= 110 ? 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                : perf < 90 ? 'text-red-600 border-red-200 bg-red-50'
+                : 'text-muted-foreground border-border bg-card';
+              const label = perf >= 110 ? 'Surperformance'
+                : perf < 90 ? 'Sous-performance'
+                : 'Normal';
+              return (
+                <div key={s.month} className={cn('rounded-lg border p-3 text-center space-y-1', color)}>
+                  <p className="text-xs font-medium">{MONTH_SHORT[s.month]}</p>
+                  <p className="text-sm font-bold tabular-nums">{perf.toFixed(0)}%</p>
+                  <p className="text-[10px]">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">Indice : {s.index.toFixed(2)}</p>
+                </div>
+              );
+            })}
           </div>
         </SectionCard>
       )}

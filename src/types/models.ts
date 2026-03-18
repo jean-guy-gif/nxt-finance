@@ -425,6 +425,56 @@ export interface BalanceSheetCheck extends BaseEntity {
 // V3.3 — Analyse Financière
 // ============================================
 
+export interface TemporalDataPoint {
+  month: number;
+  year: number;
+  ca: number;
+  charges: number;
+  marge: number;
+  nb_transactions: number;
+}
+
+export interface MonthlyComparison {
+  month: number;
+  ca_n: number;
+  ca_n1: number;
+  variation_pct: number;
+  variation_abs: number;
+}
+
+export interface TrendIndicator {
+  direction: 'up' | 'stable' | 'down';
+  variation_pct: number;
+}
+
+export interface SeasonalityIndex {
+  month: number;
+  index: number;
+  performance_vs_expected: number | null;
+}
+
+export interface TemporalAnalysis {
+  /** Monthly series over last 12 months */
+  monthly_series: TemporalDataPoint[];
+  /** N vs N-1 comparison by month */
+  monthly_comparison: MonthlyComparison[];
+  /** 3-month rolling trends for key KPIs */
+  trends: {
+    ca: TrendIndicator;
+    charges: TrendIndicator;
+    marge: TrendIndicator;
+    nb_transactions: TrendIndicator;
+  } | null;
+  /** End-of-year projection */
+  projection: {
+    ca_cumul: number;
+    months_elapsed: number;
+    ca_projected: number;
+  } | null;
+  /** Seasonality indices (1-12) */
+  seasonality: SeasonalityIndex[];
+}
+
 export interface FinancialAnalysis extends BaseEntity {
   agency_id: string;
   balance_sheet_id: string | null;
@@ -436,6 +486,8 @@ export interface FinancialAnalysis extends BaseEntity {
   is_current: boolean;
   parent_id: string | null;
   archived_reason: string | null;
+  /** Temporal analysis data (Phase B) */
+  temporal_data?: TemporalAnalysis | null;
 
   // Relations
   ratios?: FinancialRatio[];
